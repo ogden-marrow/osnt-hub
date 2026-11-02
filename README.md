@@ -21,4 +21,6 @@ cargo deploy status | logs
 Deploy target defaults to `osnt@osnt-pi.local` with key `~/.ssh/osnt_pi_ed25519`; override with
 `OSNT_DEPLOY_HOST` and `OSNT_SSH_KEY`. Server config: `OSNT_BIND` (default `0.0.0.0:8080`),
 `OSNT_LAYERS` / `OSNT_TOOLS` (paths to override the layer catalog and launcher grids; re-read per request).
-before any real traffic, then self-host tiles).
+
+Map layers (`crates/portal/layers.toml`) are streamed from public tile services on demand; nothing is stored locally.
+Check each provider's usage policy before real traffic (the public OSM tile server in particular).
