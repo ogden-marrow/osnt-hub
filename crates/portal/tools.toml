@@ -1,0 +1,38 @@
+# Launcher catalog: grids of tool cards on the home page.
+# status = "live" (clickable, needs href) | "planned" (shown dimmed).
+# Override at runtime with OSNT_TOOLS=/path/to/tools.toml (re-read on every request).
+
+[[grid]]
+name = "Geospatial"
+
+[[grid.tool]]
+name = "Map"
+description = "Base maps, satellite, terrain and elevation layers streamed on demand."
+href = "/map"
+status = "live"
+
+[[grid.tool]]
+name = "Imagery timeline"
+description = "Compare NASA GIBS satellite imagery across dates."
+
+[[grid]]
+name = "Air & Sea"
+
+[[grid.tool]]
+name = "Aircraft (ADS-B)"
+description = "Live aircraft tracking and ADS-B data processing."
+
+[[grid.tool]]
+name = "Vessels (AIS)"
+description = "Ship positions and voyages from AIS feeds."
+
+[[grid]]
+name = "Network & Infrastructure"
+
+[[grid.tool]]
+name = "Domain & IP lookup"
+description = "WHOIS, DNS, certificate and ASN history for a domain or address."
+
+[[grid.tool]]
+name = "Internet-exposed hosts"
+description = "Open ports and banners from public scan datasets."

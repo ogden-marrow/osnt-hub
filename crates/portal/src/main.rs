@@ -8,18 +8,75 @@ use axum::{
     routing::get,
 };
 use rust_embed::RustEmbed;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(RustEmbed)]
 #[folder = "assets/"]
 struct Assets;
 
-#[derive(Serialize)]
-struct MapConfig {
-    tile_url: String,
-    attribution: &'static str,
+const DEFAULT_LAYERS: &str = include_str!("../layers.toml");
+const DEFAULT_TOOLS: &str = include_str!("../tools.toml");
+
+#[derive(Serialize, Deserialize)]
+struct Tools {
+    #[serde(rename = "grid")]
+    grids: Vec<Grid>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct Grid {
+    name: String,
+    #[serde(rename = "tool")]
+    tools: Vec<Tool>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct Tool {
+    name: String,
+    description: String,
+    #[serde(default)]
+    href: Option<String>,
+    /// live | planned
+    #[serde(default = "planned")]
+    status: String,
+}
+
+fn planned() -> String {
+    "planned".into()
+}
+
+#[derive(Serialize, Deserialize)]
+struct Config {
+    map: MapView,
+    #[serde(rename = "layer")]
+    layers: Vec<Layer>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct MapView {
     center: [f64; 2],
     zoom: u8,
+}
+
+#[derive(Serialize, Deserialize)]
+struct Layer {
+    id: String,
+    name: String,
+    kind: String,
+    group: String,
+    url: String,
+    #[serde(default)]
+    attribution: String,
+    #[serde(default)]
+    subdomains: Vec<String>,
+    #[serde(default)]
+    wms_layers: Option<String>,
+    #[serde(default)]
+    max_zoom: Option<u8>,
+    #[serde(default)]
+    opacity: Option<f32>,
+    #[serde(default)]
+    default: bool,
 }
 
 #[derive(Serialize)]
@@ -40,7 +97,9 @@ async fn main() {
     let app = Router::new()
         .route("/", get(index))
         .route("/api/health", get(health))
-        .route("/api/map-config", get(map_config))
+        .route("/map", get(map_page))
+        .route("/api/config", get(config))
+        .route("/api/tools", get(tools))
         .route("/static/{*path}", get(static_file));
 
     let addr: SocketAddr = env::var("OSNT_BIND")
@@ -61,6 +120,10 @@ async fn index() -> Response {
     serve("index.html")
 }
 
+async fn map_page() -> Response {
+    serve("map.html")
+}
+
 async fn static_file(Path(path): Path<String>) -> Response {
     serve(&path)
 }
@@ -79,13 +142,26 @@ async fn health() -> Json<Health> {
     Json(Health { status: "ok", version: env!("CARGO_PKG_VERSION") })
 }
 
-/// Tile source is configurable so it can later point at a self-hosted tile server.
-async fn map_config() -> Json<MapConfig> {
-    Json(MapConfig {
-        tile_url: env::var("OSNT_TILE_URL")
-            .unwrap_or_else(|_| "https://tile.openstreetmap.org/{z}/{x}/{y}.png".into()),
-        attribution: "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors",
-        center: [20.0, 0.0],
-        zoom: 2,
-    })
+/// Tool launcher catalog: OSNT_TOOLS (re-read per request) or the embedded default.
+async fn tools() -> Result<Json<Tools>, (StatusCode, String)> {
+    let text = match env::var("OSNT_TOOLS") {
+        Ok(path) => std::fs::read_to_string(&path)
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{path}: {e}")))?,
+        Err(_) => DEFAULT_TOOLS.to_string(),
+    };
+    toml::from_str(&text)
+        .map(Json)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("tools.toml: {e}")))
+}
+
+/// Layer catalog: OSNT_LAYERS (re-read per request, so edits apply without a restart) or the embedded default.
+async fn config() -> Result<Json<Config>, (StatusCode, String)> {
+    let text = match env::var("OSNT_LAYERS") {
+        Ok(path) => std::fs::read_to_string(&path)
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{path}: {e}")))?,
+        Err(_) => DEFAULT_LAYERS.to_string(),
+    };
+    toml::from_str(&text)
+        .map(Json)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("layers.toml: {e}")))
 }
