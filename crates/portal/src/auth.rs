@@ -1,9 +1,9 @@
 //! Passkey-only sign-in (WebAuthn, ES256) and the session gate in front of everything.
 //!
-//! There are no passwords. Setup mode (registering the first passkey, or a new one after a reset) is only open while a
-//! one-time code is armed: either from `cargo deploy auth code` or from the reset file on the SD card's boot partition
-//! (consumed at boot by the tiny root `osnt-recover` service, which writes /etc/osnt/recovery/request.json). Arming a
-//! request removes every existing passkey and session. A code is valid for 30 minutes and only once.
+//! There are no passwords. Setup (creating a passkey) is open exactly when no passkey is registered: on a brand-new hub
+//! the first visitor creates theirs, and once one exists setup is closed for good. Recovery is a reset: a request from
+//! the SD card's boot partition (the tiny root `osnt-recover` service writes /etc/osnt/recovery/request.json at boot) or
+//! from `cargo deploy auth reset` removes every passkey and session, which re-opens setup.
 
 use std::{
     collections::HashMap,
@@ -33,7 +33,6 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::io::Write;
 
-const SETUP_WINDOW_SECS: u64 = 30 * 60;
 const SESSION_SECS: u64 = 14 * 24 * 3600;
 const CEREMONY_SECS: u64 = 300;
 
@@ -53,20 +52,12 @@ struct Session {
     expires: u64,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
-struct Armed {
-    request_id: String,
-    code_sha256: String,
-    armed_at: u64,
-}
-
 #[derive(Serialize, Deserialize, Default)]
 struct Store {
     user_id: String,
     credentials: Vec<Cred>,
     sessions: Vec<Session>,
     processed_request: String,
-    armed: Option<Armed>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -143,24 +134,25 @@ fn save(s: &Store) {
     }
 }
 
-/// Pick up a new setup/reset request left by `osnt-recover` or `cargo deploy auth code`. A new request arms setup mode
-/// and removes every existing passkey and session.
+/// Pick up a reset request left by `osnt-recover` or `cargo deploy auth reset`: it removes every passkey and session,
+/// which re-opens setup. Each request id is honoured once.
 fn intake(s: &mut Store) {
     let Ok(text) = fs::read_to_string(recovery_dir().join("request.json")) else { return };
     let Ok(v) = serde_json::from_str::<Value>(&text) else { return };
-    let (Some(id), Some(hash)) = (v["id"].as_str(), v["code_sha256"].as_str()) else { return };
-    if id == s.processed_request || s.armed.as_ref().is_some_and(|a| a.request_id == id) {
+    let Some(id) = v["id"].as_str() else { return };
+    if id == s.processed_request {
         return;
     }
-    tracing::warn!("sign-in reset requested: removing all passkeys and sessions; setup is open for 30 minutes");
+    tracing::warn!("sign-in reset requested: removing all passkeys and sessions; setup is open");
     s.credentials.clear();
     s.sessions.clear();
-    s.armed = Some(Armed { request_id: id.into(), code_sha256: hash.into(), armed_at: now() });
+    s.processed_request = id.into();
     save(s);
 }
 
+/// Setup is open exactly when no passkey is registered.
 fn setup_open(s: &Store) -> bool {
-    s.armed.as_ref().is_some_and(|a| now().saturating_sub(a.armed_at) < SETUP_WINDOW_SECS)
+    s.credentials.is_empty()
 }
 
 fn json_err(status: StatusCode, msg: &str) -> Response {
@@ -366,7 +358,6 @@ fn creation_options(s: &mut Store, name: &str, challenge: &str, ceremony: &str) 
 
 #[derive(Deserialize)]
 pub struct SetupBegin {
-    code: String,
     #[serde(default)]
     name: String,
 }
@@ -377,17 +368,10 @@ fn clean_name(n: &str) -> String {
 }
 
 pub async fn setup_begin(Json(b): Json<SetupBegin>) -> Response {
-    if too_many_failures() {
-        return json_err(StatusCode::TOO_MANY_REQUESTS, "too many wrong codes; wait a minute");
-    }
     let mut s = store().lock().unwrap();
     intake(&mut s);
-    let Some(armed) = s.armed.clone().filter(|_| setup_open(&s)) else {
-        return json_err(StatusCode::FORBIDDEN, "setup is not open. Run `cargo deploy auth code`, or use the reset file on the SD card.");
-    };
-    if !ct_eq(&armed.code_sha256, &sha_hex(b.code.trim())) {
-        note_failure();
-        return json_err(StatusCode::FORBIDDEN, "that code is not right");
+    if !setup_open(&s) {
+        return json_err(StatusCode::FORBIDDEN, "setup is already done; sign in with your passkey");
     }
     let (ceremony, challenge) = start_ceremony(Kind::Setup);
     Json(creation_options(&mut s, &clean_name(&b.name), &challenge, &ceremony)).into_response()
@@ -417,12 +401,12 @@ fn register(s: &mut Store, f: &Finish, kind: Kind) -> Result<(), String> {
 pub async fn setup_finish(Json(f): Json<Finish>) -> Response {
     let mut s = store().lock().unwrap();
     intake(&mut s);
-    let Some(armed) = s.armed.clone().filter(|_| setup_open(&s)) else { return json_err(StatusCode::FORBIDDEN, "setup is not open") };
+    if !setup_open(&s) {
+        return json_err(StatusCode::FORBIDDEN, "setup is already done; sign in with your passkey");
+    }
     if let Err(e) = register(&mut s, &f, Kind::Setup) {
         return json_err(StatusCode::BAD_REQUEST, &e);
     }
-    s.processed_request = armed.request_id;
-    s.armed = None;
     let cookie = session_cookie(&mut s);
     save(&s);
     with_cookie(cookie, json!({ "ok": true }))

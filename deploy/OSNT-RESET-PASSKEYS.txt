@@ -1,11 +1,10 @@
 # OSNT: reset sign-in (passkeys)
 #
 # Use this if you lost your passkey. With the SD card in your computer:
-#   1. On the line below this text, type a one-time code of at least 12 characters (letters and digits are fine).
-#      Lines that start with # are ignored.
+#   1. Type the word RESET on the line below this text (no # in front). Lines that start with # are ignored.
 #   2. Save, eject the card, put it back in the Pi and power it on.
-#   3. Within 30 minutes open  https://osnt-pi.local/setup  and enter that code to register a new passkey.
+#   3. Open  https://osnt-pi.local/setup  and create a new passkey.
 #
-# WARNING: this removes every passkey that is registered now. Anyone who can read this card can do the same,
-# so keep the card safe.
+# WARNING: this removes every passkey that is registered now, and anyone on your network could create the new one
+# before you do, so do step 3 right away. Anyone who can read this card can do the same, so keep the card safe.
 #

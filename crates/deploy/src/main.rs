@@ -6,7 +6,7 @@
 //!   cargo deploy plugin add <github-folder-url | id> | remove <id> | list | search [term]
 //!   cargo deploy repo add <github-repo-url> | list | remove <url>   (plugin repositories)
 //!   cargo deploy https init | renew | ca   your own CA + the Pi's HTTPS certificate
-//!   cargo deploy auth code | template      arm sign-in setup with a one-time code / place the SD-card reset file
+//!   cargo deploy auth reset | template     remove all passkeys (re-opens setup) / place the SD-card reset file
 //!   cargo deploy token               print the Credentials plugin admin token
 //!
 //! Environment: OSNT_DEPLOY_HOST (default osnt@osnt-pi.local), OSNT_SSH_KEY (default ~/.ssh/osnt_pi_ed25519).
@@ -182,8 +182,8 @@ fn run(r: &Remote, args: &[String]) -> Result<(), String> {
                 deploy(r, c)?;
                 match c.name {
                     "recover" => auth::template(r)?,
-                    // A brand-new Pi has no passkey yet: open setup right away and print the one-time code.
-                    "portal" if auth::is_fresh(r) => auth::code(r)?,
+                    // A brand-new Pi has no passkey yet: setup is open, so just say where to go.
+                    "portal" if auth::is_fresh(r) => eprintln!("\nNo passkey yet. Open https://{}/setup and create yours.", https::host()),
                     _ => {}
                 }
             }

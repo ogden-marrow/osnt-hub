@@ -1,16 +1,12 @@
 //! Boot-time sign-in recovery. Runs as root before the portal starts.
 //!
-//! If the boot partition holds OSNT-RESET-PASSKEYS.txt with a one-time code on its first non-comment line, this writes a
-//! reset request (id + SHA-256 of the code, never the code) to /etc/osnt/recovery/request.json and puts the file back to
-//! its template so the code does not stay on the card. The portal then removes all passkeys and opens setup for 30 minutes.
-//! Physical access to the SD card is the only way to trigger it, which is the point.
+//! If the boot partition holds OSNT-RESET-PASSKEYS.txt with a line that says RESET (no leading #), this writes a reset
+//! request to /etc/osnt/recovery/request.json and puts the file back to its template so it only fires once. The portal then
+//! removes all passkeys and sessions, which re-opens setup. Physical access to the SD card is the only way to trigger it.
 
 use std::{env, fs, io::Read, path::Path};
 
-use sha2::{Digest, Sha256};
-
 const FILE_NAME: &str = "OSNT-RESET-PASSKEYS.txt";
-const MIN_CODE_LEN: usize = 12;
 
 const TEMPLATE: &str = include_str!("../../../deploy/OSNT-RESET-PASSKEYS.txt");
 
@@ -29,26 +25,20 @@ fn main() {
         println!("osnt-recover: no reset file, nothing to do");
         return;
     };
-    let Some(code) = text.lines().map(str::trim).find(|l| !l.is_empty() && !l.starts_with('#')) else {
-        println!("osnt-recover: reset file has no code, nothing to do");
-        return;
-    };
-    if code.len() < MIN_CODE_LEN {
-        eprintln!("osnt-recover: the code in {FILE_NAME} is shorter than {MIN_CODE_LEN} characters; ignoring it");
+    if !text.lines().any(|l| l.trim().eq_ignore_ascii_case("reset")) {
+        println!("osnt-recover: no RESET line in the reset file, nothing to do");
         return;
     }
-
-    let hash: String = Sha256::digest(code.as_bytes()).iter().map(|b| format!("{b:02x}")).collect();
-    let request = format!("{{\"id\":\"{}\",\"code_sha256\":\"{hash}\"}}\n", random_hex());
+    let request = format!("{{\"id\":\"{}\"}}\n", random_hex());
     fs::create_dir_all(&out_dir).expect("create recovery dir");
     let (tmp, dst) = (Path::new(&out_dir).join("request.json.tmp"), Path::new(&out_dir).join("request.json"));
     fs::write(&tmp, request).expect("write request");
     fs::rename(&tmp, &dst).expect("publish request");
 
-    // Blank the code from the card. If this fails the request still exists, and the same code would re-arm only once
-    // because the portal remembers processed request ids.
+    // Put the template back so the reset fires only once. If this fails the request still exists, and the portal only
+    // honours each request id once.
     if let Err(e) = fs::write(&file, TEMPLATE) {
         eprintln!("osnt-recover: could not rewrite {FILE_NAME}: {e}");
     }
-    println!("osnt-recover: reset requested; setup opens on the portal for 30 minutes");
+    println!("osnt-recover: reset requested; the portal will remove all passkeys and re-open setup");
 }

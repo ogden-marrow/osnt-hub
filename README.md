@@ -21,7 +21,7 @@ rustup target add aarch64-unknown-linux-musl   # once
 cargo run -p osnt-portal                       # local dev on :8080
 cargo deploy                                   # build and deploy the core to the Pi
 cargo deploy token                             # print the Credentials plugin admin token
-cargo deploy auth code|template                # one-time setup code / SD-card reset file
+cargo deploy auth reset|template               # remove all passkeys (re-opens setup) / SD-card reset file
 cargo deploy https init|renew|ca               # your own CA and the Pi's HTTPS certificate (see below)
 
 cargo deploy repo add https://github.com/ogden-marrow/osnt-plugins
@@ -34,15 +34,14 @@ cargo deploy plugin remove map [--purge]
 
 ## Sign-in: passkeys only
 
-There are no passwords. A new hub has no passkey, so `cargo deploy` opens setup and prints a one-time code
-(`cargo deploy auth code` prints a fresh one any time; it is valid for 30 minutes). Open `https://osnt-pi.local/setup`,
-enter the code and create a passkey; everything else requires a signed-in session (14 days, HttpOnly cookie).
+There are no passwords and no setup code. A new hub has no passkey, so the first visit to `https://osnt-pi.local/setup`
+creates yours; once one exists, setup is closed and everything requires a signed-in session (14 days, HttpOnly cookie).
+Do the first setup right after deploying, before anyone else on your network opens the page.
 
 Lost your passkey: take the SD card out, open `OSNT-RESET-PASSKEYS.txt` on the boot partition (a plain FAT file any
-computer can read), write a one-time code of 12+ characters on the line below the comments, put the card back and power
-on. The tiny root service `osnt-recover` turns that into a reset request (storing only a hash of the code and blanking the
-file), the portal removes all passkeys and sessions, and setup opens for 30 minutes. Physical access to the card is the
-only way to trigger it.
+computer can read), type `RESET` on its own line, put the card back and power on. The tiny root service `osnt-recover`
+turns that into a reset request and blanks the line; the portal removes all passkeys and sessions, and setup re-opens.
+Physical access to the card is the only way to trigger it. `cargo deploy auth reset` does the same over SSH.
 
 ## HTTPS (your own CA)
 

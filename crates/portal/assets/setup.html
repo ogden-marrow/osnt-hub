@@ -22,13 +22,8 @@
 <body>
   <main>
     <h1>OSNT setup</h1>
-    <div id="closed" class="closed" hidden>
-      <p style="margin:0">Setup is not open. To open it, run <code>cargo deploy auth code</code> on your computer, or put a code in the reset file on the Pi's SD card (<code>OSNT-RESET-PASSKEYS.txt</code> on the boot partition) and restart the Pi. It stays open for 30 minutes.</p>
-    </div>
     <div id="open" hidden>
-      <p>Create the passkey you will use to sign in. This replaces any passkeys registered before. There is no password.</p>
-      <label for="code">Setup code</label>
-      <input id="code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD-EFGH-JKLM-NPQR">
+      <p>Welcome. Create the passkey you will use to sign in; there is no password. The first passkey on a new hub is yours, so do this now, before anyone else on your network visits this page.</p>
       <label for="name">Your name (a label for this passkey)</label>
       <input id="name" autocomplete="off" placeholder="e.g. John, iPhone">
       <button id="go">Create passkey</button>
@@ -46,7 +41,7 @@
       try {
         if (!window.PublicKeyCredential) throw new Error('This browser does not support passkeys (it needs HTTPS and a trusted certificate).');
         const name = $('name').value.trim();
-        const begin = await post('/auth/setup/begin', { code: $('code').value, name });
+        const begin = await post('/auth/setup/begin', { name });
         const opts = await begin.json();
         if (!begin.ok) throw new Error(opts.error);
         const pk = opts.publicKey;
@@ -63,9 +58,8 @@
     }
     $('go').onclick = create;
     fetch('/auth/status').then(r => r.json()).then(s => {
-      if (s.logged_in && s.configured) { location.href = '/'; return; }
-      $('open').hidden = !s.setup_open; $('closed').hidden = s.setup_open;
-      if (!s.setup_open && s.configured) location.href = '/login';
+      if (s.configured) { location.href = s.logged_in ? '/' : '/login'; return; }
+      $('open').hidden = false;
     });
   </script>
 </body>
