@@ -13,7 +13,5 @@ serde_json = "1"
 redb = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-# Pure-Rust TLS (RustCrypto provider) so the plugin cross-compiles to the Pi without a C toolchain.
-ureq = { version = "3", default-features = false, features = ["rustls-no-provider", "rustls-webpki-roots", "gzip", "json"] }
-rustls = { version = "0.23", default-features = false, features = ["std", "tls12"] }
-rustls-rustcrypto = "0.0.2-alpha"
+ureq = { version = "3", default-features = false, features = ["gzip", "json"] }
+osnt-common = { path = "../common" }

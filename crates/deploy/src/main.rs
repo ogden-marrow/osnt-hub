@@ -23,14 +23,25 @@ struct Component {
     manifest: Option<(&'static str, &'static str)>,
 }
 
+/// A plugin component: binary `osnt-<id>`, unit `deploy/osnt-<id>.service`, manifest `deploy/plugins.d/<id>.toml`.
+macro_rules! plugin {
+    ($id:literal) => {
+        Component {
+            name: $id,
+            bin: concat!("osnt-", $id),
+            unit: include_str!(concat!("../../../deploy/osnt-", $id, ".service")),
+            manifest: Some((concat!($id, ".toml"), include_str!(concat!("../../../deploy/plugins.d/", $id, ".toml")))),
+        }
+    };
+}
+
 const COMPONENTS: &[Component] = &[
     Component { name: "portal", bin: "osnt-portal", unit: include_str!("../../../deploy/osnt-portal.service"), manifest: None },
-    Component {
-        name: "adsb",
-        bin: "osnt-adsb",
-        unit: include_str!("../../../deploy/osnt-adsb.service"),
-        manifest: Some(("adsb.toml", include_str!("../../../deploy/plugins.d/adsb.toml"))),
-    },
+    plugin!("adsb"),
+    plugin!("imagery"),
+    plugin!("lookup"),
+    plugin!("imgmeta"),
+    plugin!("cameras"),
 ];
 
 struct Remote {

@@ -6,7 +6,7 @@ use axum::{
     extract::{Path, Request},
     http::{StatusCode, Uri, header},
     response::{IntoResponse, Redirect, Response},
-    routing::{any, get},
+    routing::{any, get, post},
 };
 use hyper_util::{client::legacy::Client, rt::TokioExecutor};
 use rust_embed::RustEmbed;
@@ -112,6 +112,8 @@ async fn main() {
         .route("/api/health", get(health))
         .route("/api/config", get(config))
         .route("/api/tools", get(tools))
+        .route("/api/agent/tools", get(agent_tools))
+        .route("/api/agent/call", post(agent_call))
         .route("/p/{id}", get(plugin_root_redirect))
         .route("/p/{id}/", any(proxy))
         .route("/p/{id}/{*rest}", any(proxy))
@@ -225,6 +227,107 @@ async fn config() -> Result<Json<Config>, (StatusCode, String)> {
     toml::from_str(&text)
         .map(Json)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("layers.toml: {e}")))
+}
+
+/// GET a path on a plugin's loopback service and return (status, body).
+async fn plugin_get(port: u16, path_and_query: &str) -> Result<(StatusCode, axum::body::Bytes), String> {
+    let uri: Uri = format!("http://127.0.0.1:{port}/{path_and_query}").parse().map_err(|e| format!("bad uri: {e}"))?;
+    let req = Request::get(uri).body(Body::empty()).map_err(|e| e.to_string())?;
+    let client: Client<_, Body> = Client::builder(TokioExecutor::new()).build_http();
+    let res = tokio::time::timeout(Duration::from_secs(40), client.request(req))
+        .await
+        .map_err(|_| "plugin timed out".to_string())?
+        .map_err(|e| format!("plugin unreachable: {e}"))?;
+    let status = res.status();
+    let body = axum::body::to_bytes(Body::new(res.into_body()), 4 << 20).await.map_err(|e| e.to_string())?;
+    Ok((status, body))
+}
+
+/// A plugin operation as advertised by the plugin's own GET /tools, tagged with where it lives.
+struct AgentTool {
+    plugin: String,
+    port: u16,
+    spec: serde_json::Value,
+}
+
+async fn collect_agent_tools() -> Vec<AgentTool> {
+    let mut out = Vec::new();
+    for m in manifests() {
+        let Ok((status, body)) = plugin_get(m.port, "tools").await else { continue };
+        if !status.is_success() {
+            continue;
+        }
+        let Ok(serde_json::Value::Array(items)) = serde_json::from_slice::<serde_json::Value>(&body) else { continue };
+        out.extend(items.into_iter().map(|spec| AgentTool { plugin: m.id.clone(), port: m.port, spec }));
+    }
+    out
+}
+
+/// Every plugin's operations in one list, for LLM agents: name, description, JSON-schema parameters.
+async fn agent_tools() -> Json<serde_json::Value> {
+    let tools: Vec<_> = collect_agent_tools()
+        .await
+        .into_iter()
+        .map(|t| {
+            serde_json::json!({
+                "name": t.spec["name"], "description": t.spec["description"],
+                "parameters": t.spec["parameters"], "plugin": t.plugin,
+            })
+        })
+        .collect();
+    Json(serde_json::Value::Array(tools))
+}
+
+#[derive(Deserialize)]
+struct AgentCall {
+    tool: String,
+    #[serde(default)]
+    args: serde_json::Map<String, serde_json::Value>,
+}
+
+fn pct(s: &str) -> String {
+    s.bytes().map(|b| if b.is_ascii_alphanumeric() || b"-._~".contains(&b) { (b as char).to_string() } else { format!("%{b:02X}") }).collect()
+}
+
+fn arg_text(v: &serde_json::Value) -> String {
+    match v {
+        serde_json::Value::String(s) => s.clone(),
+        other => other.to_string(),
+    }
+}
+
+/// Execute one plugin operation by tool name. Only GET operations are supported; {param} segments in the
+/// plugin's path are filled from args and any remaining args become the query string.
+async fn agent_call(Json(call): Json<AgentCall>) -> Response {
+    let Some(tool) = collect_agent_tools().await.into_iter().find(|t| t.spec["name"] == call.tool.as_str()) else {
+        return (StatusCode::NOT_FOUND, format!("unknown tool {}", call.tool)).into_response();
+    };
+    if tool.spec["method"].as_str().unwrap_or("GET") != "GET" {
+        return (StatusCode::NOT_IMPLEMENTED, "only GET tools are supported").into_response();
+    }
+    let mut path = tool.spec["path"].as_str().unwrap_or_default().trim_start_matches('/').to_string();
+    let mut query = Vec::new();
+    for (k, v) in &call.args {
+        let placeholder = format!("{{{k}}}");
+        if path.contains(&placeholder) {
+            path = path.replace(&placeholder, &pct(&arg_text(v)));
+        } else {
+            query.push(format!("{}={}", pct(k), pct(&arg_text(v))));
+        }
+    }
+    if path.contains('{') {
+        return (StatusCode::BAD_REQUEST, "missing a required path argument").into_response();
+    }
+    if !query.is_empty() {
+        path = format!("{path}?{}", query.join("&"));
+    }
+    match plugin_get(tool.port, &path).await {
+        Ok((status, body)) => {
+            let parsed = serde_json::from_slice::<serde_json::Value>(&body).unwrap_or_else(|_| serde_json::Value::String(String::from_utf8_lossy(&body).into_owned()));
+            (StatusCode::OK, Json(serde_json::json!({ "ok": status.is_success(), "status": status.as_u16(), "result": parsed }))).into_response()
+        }
+        Err(e) => (StatusCode::BAD_GATEWAY, e).into_response(),
+    }
 }
 
 async fn plugin_root_redirect(Path(id): Path<String>) -> Redirect {

@@ -11,10 +11,6 @@ description = "Base maps, satellite, terrain and elevation layers streamed on de
 href = "/map"
 status = "live"
 
-[[grid.tool]]
-name = "Imagery timeline"
-description = "Compare NASA GIBS satellite imagery across dates."
-
 [[grid]]
 name = "Air & Sea"
 
@@ -24,10 +20,6 @@ description = "Ship positions and voyages from AIS feeds."
 
 [[grid]]
 name = "Network & Infrastructure"
-
-[[grid.tool]]
-name = "Domain & IP lookup"
-description = "WHOIS, DNS, certificate and ASN history for a domain or address."
 
 [[grid.tool]]
 name = "Internet-exposed hosts"

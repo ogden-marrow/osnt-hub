@@ -1,0 +1,10 @@
+[package]
+name = "osnt-common"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+# Pure-Rust TLS (RustCrypto provider) so plugins cross-compile to the Pi without a C toolchain.
+ureq = { version = "3", default-features = false, features = ["rustls-no-provider", "rustls-webpki-roots", "gzip", "json"] }
+rustls-rustcrypto = "0.0.2-alpha"

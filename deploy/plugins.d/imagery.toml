@@ -1,0 +1,5 @@
+id = "imagery"
+name = "Imagery timeline"
+description = "Compare NASA satellite imagery across dates, with fire and thermal detections."
+grid = "Geospatial"
+port = 8102

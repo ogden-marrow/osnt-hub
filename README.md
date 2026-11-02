@@ -5,10 +5,16 @@ Open source intelligence portal, written in Rust, deployed straight onto Raspber
 ## Layout
 
 - `crates/portal` – axum web server. Static assets (including vendored Leaflet) are embedded in the binary.
-- `crates/adsb` – ADS-B plugin: live/military/emergency aircraft from adsb.lol, position history in an embedded redb file.
-- `crates/example` – minimal plugin to copy (see `docs/PLUGINS.md`; prompt template in `docs/PLUGIN_PROMPT.md`).
-- `crates/deploy` – Rust deploy tool: builds, copies over SSH, installs the systemd unit, restarts.
+- `crates/common` – shared helpers for plugins (HTTPS client with pure-Rust TLS).
+- Plugins, each a separate service behind the core:
+  - `crates/adsb` – live/military/emergency aircraft from adsb.lol, with a recorded position history (redb).
+  - `crates/imagery` – NASA GIBS satellite imagery timeline with A/B date blend and VIIRS fire/thermal detections.
+  - `crates/lookup` – domain and IP lookup: DNS over HTTPS, RDAP registration, reverse DNS, certificate-transparency names.
+  - `crates/imgmeta` – image forensics: hashes, EXIF, GPS and editing flags, reverse-image-search links.
+  - `crates/cameras` – grid of live still-image camera feeds from `cameras.toml`, with optional map placement.
+  - `crates/deploy` – Rust deploy tool: builds, copies over SSH, installs the systemd unit, restarts.
 - `deploy/osnt-portal.service` – hardened systemd unit (DynamicUser, read-only filesystem).
+- `.claude/skills/osnt-plugin` – Claude Code skill: how to write, wire in and verify a plugin.
 - `flash-pi.sh` – one-off SD card flasher for the Pi 5 (Raspberry Pi OS Lite, key-only SSH).
 
 ## Use
@@ -38,3 +44,15 @@ parameters), which is the contract the planned agent layer will use to call plug
 
 `cargo deploy [portal|adsb ...]` builds, installs the unit and manifest, and restarts. Everything is pure Rust
 (TLS via rustls with the RustCrypto provider), so no C cross-toolchain is needed.
+
+## Agent API
+
+The core aggregates every plugin's `GET /tools` into one catalogue:
+
+```bash
+curl http://osnt-pi.local:8080/api/agent/tools                      # all tools with JSON-schema parameters
+curl -X POST http://osnt-pi.local:8080/api/agent/call -H 'content-type: application/json' \
+  -d '{"tool":"lookup_overview","args":{"q":"example.com"}}'        # call one
+```
+
+An LLM harness (for example DeepSeek's OpenAI-compatible API) can use the first as its tool list and the second to execute calls.

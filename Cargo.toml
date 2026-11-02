@@ -1,6 +1,9 @@
 [workspace]
 resolver = "3"
-members = ["crates/portal", "crates/deploy", "crates/adsb", "crates/example"]
+members = [
+    "crates/common", "crates/portal", "crates/deploy",
+    "crates/adsb", "crates/example", "crates/imagery", "crates/lookup", "crates/imgmeta", "crates/cameras",
+]
 
 [workspace.package]
 version = "0.1.0"

@@ -62,20 +62,6 @@ fn now_secs() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
 }
 
-fn make_agent() -> ureq::Agent {
-    let provider = Arc::new(rustls_rustcrypto::provider());
-    let tls = ureq::tls::TlsConfig::builder()
-        .provider(ureq::tls::TlsProvider::Rustls)
-        .unversioned_rustls_crypto_provider(provider)
-        .build();
-    ureq::Agent::config_builder()
-        .tls_config(tls)
-        .timeout_global(Some(Duration::from_secs(12)))
-        .user_agent("osnt-adsb/0.1 (personal OSINT dashboard)")
-        .build()
-        .into()
-}
-
 fn parse_aircraft(v: &Value) -> Option<Aircraft> {
     let lat = v.get("lat")?.as_f64()?;
     let lon = v.get("lon")?.as_f64()?;
@@ -357,7 +343,7 @@ async fn main() -> Result<()> {
 
     let db_path = env::var("OSNT_ADSB_DB").unwrap_or_else(|_| "adsb.redb".into());
     let state: Shared = Arc::new(AppState {
-        agent: make_agent(),
+        agent: osnt_common::http_agent("osnt-adsb/0.1 (personal OSINT dashboard)"),
         api: env::var("OSNT_ADSB_API").unwrap_or_else(|_| "https://api.adsb.lol".into()),
         db: Database::create(&db_path).with_context(|| format!("open {db_path}"))?,
         cache: Mutex::default(),

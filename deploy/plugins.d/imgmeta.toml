@@ -1,0 +1,5 @@
+id = "imgmeta"
+name = "Image forensics"
+description = "EXIF, hashes and editing/GPS flags for an image, plus reverse-image-search links."
+grid = "Media & Verification"
+port = 8104
