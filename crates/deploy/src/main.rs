@@ -1,11 +1,15 @@
 //! Deploys OSNT components to a Raspberry Pi over SSH.
 //!
-//!   cargo deploy                     build and deploy everything
-//!   cargo deploy adsb [portal ...]   deploy only the named components
+//!   cargo deploy                     build and deploy the portal (the hub core)
 //!   cargo deploy status [name]       show service status
 //!   cargo deploy logs [name]         recent service logs
+//!   cargo deploy plugin add <github-folder-url | id> | remove <id> | list | search [term]
+//!   cargo deploy repo add <github-repo-url> | list | remove <url>   (plugin repositories)
+//!   cargo deploy token               print the Credentials plugin admin token
 //!
 //! Environment: OSNT_DEPLOY_HOST (default osnt@osnt-pi.local), OSNT_SSH_KEY (default ~/.ssh/osnt_pi_ed25519).
+
+mod plugin;
 
 use std::{
     env,
@@ -13,38 +17,22 @@ use std::{
     process::{Command, ExitCode, Stdio},
 };
 
-const TARGET: &str = "aarch64-unknown-linux-musl";
+pub(crate) const TARGET: &str = "aarch64-unknown-linux-musl";
 
-/// One deployable: a binary, its systemd unit and, for plugins, the manifest the core discovers.
+/// A deployable part of the hub itself. Plugins are installed with `plugin add`, not built here.
 struct Component {
     name: &'static str,
     bin: &'static str,
     unit: &'static str,
-    manifest: Option<(&'static str, &'static str)>,
 }
 
-/// A plugin component: binary `osnt-<id>`, unit `deploy/osnt-<id>.service`, manifest `deploy/plugins.d/<id>.toml`.
-macro_rules! plugin {
-    ($id:literal) => {
-        Component {
-            name: $id,
-            bin: concat!("osnt-", $id),
-            unit: include_str!(concat!("../../../deploy/osnt-", $id, ".service")),
-            manifest: Some((concat!($id, ".toml"), include_str!(concat!("../../../deploy/plugins.d/", $id, ".toml")))),
-        }
-    };
-}
+const COMPONENTS: &[Component] = &[Component {
+    name: "portal",
+    bin: "osnt-portal",
+    unit: include_str!("../../../deploy/osnt-portal.service"),
+}];
 
-const COMPONENTS: &[Component] = &[
-    Component { name: "portal", bin: "osnt-portal", unit: include_str!("../../../deploy/osnt-portal.service"), manifest: None },
-    plugin!("adsb"),
-    plugin!("imagery"),
-    plugin!("lookup"),
-    plugin!("imgmeta"),
-    plugin!("cameras"),
-];
-
-struct Remote {
+pub(crate) struct Remote {
     host: String,
     key: String,
 }
@@ -76,6 +64,24 @@ impl Remote {
             child.stdin.take().unwrap().write_all(data.as_bytes()).map_err(|e| e.to_string())?;
         }
         check(child.wait().map_err(|e| e.to_string())?, "ssh")
+    }
+
+    fn ssh_out(&self, script: &str) -> Result<String, String> {
+        let out = Command::new("ssh").args(self.ssh_opts()).arg(&self.host).arg(script).output().map_err(|e| format!("ssh: {e}"))?;
+        if !out.status.success() {
+            return Err(format!("ssh failed: {}", String::from_utf8_lossy(&out.stderr).trim()));
+        }
+        Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
+    }
+
+    /// Each plugin gets a private token in a root-only env file; only its SHA-256 goes into the (world-readable)
+    /// manifest, so the portal can tell plugins apart and hand each one only the secrets it declares.
+    fn ensure_token_hash(&self, id: &str) -> Result<String, String> {
+        self.ssh_out(&format!(
+            "set -e; sudo mkdir -p /etc/osnt/tokens && sudo chmod 700 /etc/osnt/tokens; f=/etc/osnt/tokens/{id}.env; \
+             if ! sudo test -f $f; then t=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \\n'); echo \"OSNT_PLUGIN_TOKEN=$t\" | sudo tee $f >/dev/null; sudo chmod 600 $f; fi; \
+             sudo sed -n 's/^OSNT_PLUGIN_TOKEN=//p' $f | tr -d '\\n' | sha256sum | cut -d' ' -f1"
+        ))
     }
 
     fn scp(&self, local: &str, remote: &str) -> Result<(), String> {
@@ -114,11 +120,6 @@ fn deploy(r: &Remote, c: &Component) -> Result<(), String> {
     eprintln!("==> {}: copying {bin} to {}", c.name, r.host);
     r.scp(&bin, &format!("/tmp/{}", c.bin))?;
 
-    if let Some((file, content)) = c.manifest {
-        eprintln!("==> {}: installing plugin manifest", c.name);
-        r.ssh(&format!("sudo mkdir -p /etc/osnt/plugins.d && sudo tee /etc/osnt/plugins.d/{file} >/dev/null"), Some(content))?;
-    }
-
     eprintln!("==> {}: installing and restarting service", c.name);
     let bin_name = c.bin;
     r.ssh(
@@ -134,6 +135,12 @@ fn deploy(r: &Remote, c: &Component) -> Result<(), String> {
 
 fn run(r: &Remote, args: &[String]) -> Result<(), String> {
     match args.first().map(String::as_str) {
+        Some("plugin") => plugin::run(r, &args[1..]),
+        Some("repo") => plugin::repo(&args[1..]),
+        Some("token") => {
+            println!("{}", r.ssh_out("sudo cat /var/lib/osnt-credentials/admin-token")?);
+            Ok(())
+        }
         Some(verb @ ("status" | "logs")) => {
             let units: Vec<&str> = match args.get(1) {
                 Some(name) => vec![find(name)?.bin],

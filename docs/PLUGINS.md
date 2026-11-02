@@ -1,41 +1,17 @@
-# Writing an OSNT plugin
+# Plugin contract (host side)
 
-A plugin is a separate Rust service. The portal core finds it through a manifest, proxies `/p/<id>/` to it,
-and adds its card to the launcher. `crates/example` is a working starting point.
+Plugins live in a separate repository (see the `osnt-plugins` repository); this document is what the hub guarantees them.
 
-## 1. The service
+- **Discovery.** The installer writes `/etc/osnt/plugins.d/<id>.toml` (id, name, description, grid, port, `[[secret]]`,
+  `token_sha256`). The portal re-reads that directory on every request, so installs show up without a restart.
+- **Mounting.** `GET /p/<id>/...` is reverse-proxied to `127.0.0.1:<port>/...`. Paths starting with `internal/` are never proxied.
+- **Launcher.** Each plugin becomes a card in its `grid`, shown as `live` when its port accepts connections and `offline` otherwise.
+- **Agent API.** `GET /api/agent/tools` merges each plugin's `GET /tools`; `POST /api/agent/call {tool, args}` runs a GET tool.
+- **Secrets.** The Credentials plugin stores keys. A plugin reads one with its own token (`OSNT_PLUGIN_TOKEN`, loaded from a
+  root-only file by its systemd unit) and only for names declared in its manifest.
+- **Shared UI kit.** `/static/leaflet/*` and `/static/osnt-map.js` (layer catalog from `crates/portal/layers.toml`).
+- **Sandbox.** The installer generates each plugin's systemd unit: dynamic user, read-only filesystem, private /tmp,
+  optional `StateDirectory=osnt-<id>`, loopback binding by convention. Plugins cannot set their own command line or privileges.
+- **Dependencies.** `requires` (plugin ids that must be installed first) and `provides` (API names) in `plugin.toml`.
 
-- Listen on **loopback only** (`127.0.0.1:<port>`); pick an unused port (adsb uses 8101, example 8190).
-- Serve your page at `/` and your API under `/api/...`. The core strips the `/p/<id>` prefix.
-- In pages use **relative URLs** (`fetch('api/x')`). Shared assets are absolute: `/static/leaflet/leaflet.js`,
-  `/static/osnt-map.js` (`await OSNT.createMap('map')` gives the shared map with the layer catalog from `layers.toml`).
-- Optional but recommended: `GET /tools` returns a JSON array of operations
-  `{ name, description, method, path, parameters (JSON schema) }` so the planned agent layer can call you.
-- Prefer pure-Rust dependencies (the Pi build uses `rust-lld`, no C toolchain). For HTTPS use `ureq` with
-  `rustls-no-provider` + `rustls-webpki-roots` + `rustls-rustcrypto` (see `crates/adsb/src/main.rs`, `make_agent`);
-  for storage use `redb`.
-- Persistent data: write under the systemd `StateDirectory` (see below). Secrets (API keys) go in environment
-  variables set on the Pi, never in the repo.
-
-## 2. Wiring it in
-
-1. Add the crate to `members` in the root `Cargo.toml`.
-2. `deploy/plugins.d/<id>.toml`:
-   ```toml
-   id = "example"
-   name = "Example"
-   description = "Shown on the launcher card."
-   grid = "Tools"          # existing grid name, or a new one is created
-   port = 8190
-   ```
-3. `deploy/osnt-<id>.service`: copy `deploy/osnt-adsb.service`, change binary, bind env, and `StateDirectory`.
-4. Add a `Component { .. }` entry to `COMPONENTS` in `crates/deploy/src/main.rs`.
-5. `cargo deploy <id>` builds for the Pi, installs binary, unit and manifest, and restarts. The card appears on
-   the launcher immediately (it shows "offline" while the service is down).
-
-## 3. Run locally
-
-```bash
-cargo run -p osnt-example                                   # the plugin on :8190
-OSNT_PLUGINS_DIR=deploy/plugins.d cargo run -p osnt-portal  # the core on :8080 will proxy it
-```
+Installing and removing: `cargo deploy plugin add|remove|list|search`, `cargo deploy repo add|list|remove`.

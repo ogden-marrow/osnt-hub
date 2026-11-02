@@ -5,12 +5,6 @@
 [[grid]]
 name = "Geospatial"
 
-[[grid.tool]]
-name = "Map"
-description = "Base maps, satellite, terrain and elevation layers streamed on demand."
-href = "/map"
-status = "live"
-
 [[grid]]
 name = "Air & Sea"
 

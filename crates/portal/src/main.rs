@@ -28,7 +28,7 @@ struct Tools {
 #[derive(Serialize, Deserialize)]
 struct Grid {
     name: String,
-    #[serde(rename = "tool")]
+    #[serde(default, rename = "tool")]
     tools: Vec<Tool>,
 }
 
@@ -50,24 +50,11 @@ fn planned() -> String {
 /// A plugin is a separate local service; its manifest tells the core where it listens and how to show it.
 #[derive(Deserialize)]
 struct Manifest {
-    #[serde(default, rename = "secret")]
-    secrets: Vec<SecretSpec>,
     id: String,
     name: String,
     description: String,
     grid: String,
     port: u16,
-}
-
-/// A credential a plugin needs, declared in its manifest as `[[secret]]`.
-#[derive(Deserialize, Clone)]
-struct SecretSpec {
-    name: String,
-    label: String,
-    #[serde(default)]
-    help_url: Option<String>,
-    #[serde(default)]
-    required: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -121,10 +108,11 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(index))
-        .route("/map", get(map_page))
+        .route("/map", get(|| async { Redirect::temporary("/p/map/") }))
         .route("/api/health", get(health))
         .route("/api/config", get(config))
         .route("/api/tools", get(tools))
+        .route("/credentials", get(|| async { Redirect::temporary("/p/credentials/") }))
         .route("/api/agent/tools", get(agent_tools))
         .route("/api/agent/call", post(agent_call))
         .route("/p/{id}", get(plugin_root_redirect))
@@ -148,10 +136,6 @@ async fn main() {
 
 async fn index() -> Response {
     serve("index.html")
-}
-
-async fn map_page() -> Response {
-    serve("map.html")
 }
 
 async fn static_file(Path(path): Path<String>) -> Response {
@@ -354,6 +338,10 @@ async fn proxy(req: Request) -> Response {
     let id = parts.next().unwrap_or_default();
     let rest = parts.next().unwrap_or_default();
 
+    // Plugins' `internal/*` endpoints (for example secret reads) are for other local services only, never the network.
+    if rest.split('/').next().is_some_and(|seg| seg == "internal") {
+        return (StatusCode::NOT_FOUND, "not found").into_response();
+    }
     let Some(m) = manifests().into_iter().find(|m| m.id == id) else {
         return (StatusCode::NOT_FOUND, "no such plugin").into_response();
     };

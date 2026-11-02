@@ -1,5 +1,0 @@
-id = "adsb"
-name = "Aircraft (ADS-B)"
-description = "Live aircraft, military traffic and emergency squawks, with a recorded position history."
-grid = "Air & Sea"
-port = 8101

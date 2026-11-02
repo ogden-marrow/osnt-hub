@@ -1,58 +1,41 @@
-# OSNT
+# OSNT hub
 
-Open source intelligence portal, written in Rust, deployed straight onto Raspberry Pi OS (no containers).
+The dashboard for a modular open source intelligence system, written in Rust and run straight on Raspberry Pi OS
+(no containers). The hub is deliberately small: a launcher, a plugin registry and proxy, an installer and an agent API.
+Everything else (maps, aircraft, lookups, image forensics, the credential store...) is a plugin, kept in a separate
+repository: [osnt-plugins](https://github.com/ogden-marrow/osnt-plugins).
 
 ## Layout
 
-- `crates/portal` – axum web server. Static assets (including vendored Leaflet) are embedded in the binary.
-- `crates/common` – shared helpers for plugins (HTTPS client with pure-Rust TLS).
-- Plugins, each a separate service behind the core:
-  - `crates/adsb` – live/military/emergency aircraft from adsb.lol, with a recorded position history (redb).
-  - `crates/imagery` – NASA GIBS satellite imagery timeline with A/B date blend and VIIRS fire/thermal detections.
-  - `crates/lookup` – domain and IP lookup: DNS over HTTPS, RDAP registration, reverse DNS, certificate-transparency names.
-  - `crates/imgmeta` – image forensics: hashes, EXIF, GPS and editing flags, reverse-image-search links.
-  - `crates/cameras` – grid of live still-image camera feeds from `cameras.toml`, with optional map placement.
-  - `crates/deploy` – Rust deploy tool: builds, copies over SSH, installs the systemd unit, restarts.
-- `deploy/osnt-portal.service` – hardened systemd unit (DynamicUser, read-only filesystem).
-- `.claude/skills/osnt-plugin` – Claude Code skill: how to write, wire in and verify a plugin.
-- `flash-pi.sh` – one-off SD card flasher for the Pi 5 (Raspberry Pi OS Lite, key-only SSH).
+- `crates/portal`: the core web server (launcher, plugin proxy, shared map kit, agent tool API). Assets are embedded in the binary.
+- `crates/deploy`: the `osnt-deploy` tool: deploys the core to the Pi and installs/removes plugins (`cargo deploy ...`).
+- `deploy/osnt-portal.service`: hardened systemd unit for the core.
+- `docs/PLUGINS.md`: what the hub guarantees plugins.
+- `flash-pi.sh`: one-off SD card flasher for the Pi 5 (Raspberry Pi OS Lite, key-only SSH).
 
 ## Use
 
 ```bash
 rustup target add aarch64-unknown-linux-musl   # once
 cargo run -p osnt-portal                       # local dev on :8080
-cargo deploy                                   # build + deploy to the Pi
-cargo deploy status | logs
+cargo deploy                                   # build and deploy the core to the Pi
+cargo deploy token                             # print the Credentials plugin admin token
+
+cargo deploy repo add https://github.com/ogden-marrow/osnt-plugins
+cargo deploy plugin search
+cargo deploy plugin add map                    # by id from a registered repository
+cargo deploy plugin add /path/to/osnt-plugins/plugins/map   # or from a local folder or a GitHub folder link
+cargo deploy plugin list
+cargo deploy plugin remove map [--purge]
 ```
 
-Deploy target defaults to `osnt@osnt-pi.local` with key `~/.ssh/osnt_pi_ed25519`; override with
-`OSNT_DEPLOY_HOST` and `OSNT_SSH_KEY`. Server config: `OSNT_BIND` (default `0.0.0.0:8080`),
-`OSNT_LAYERS` / `OSNT_TOOLS` (paths to override the layer catalog and launcher grids; re-read per request).
-
-Map layers (`crates/portal/layers.toml`) are streamed from public tile services on demand; nothing is stored locally.
-Check each provider's usage policy before real traffic (the public OSM tile server in particular).
-
-## Plugins
-
-A plugin is a separate Rust service on loopback plus a manifest in `/etc/osnt/plugins.d/<id>.toml`
-(`id`, `name`, `description`, `grid`, `port`; see `deploy/plugins.d/adsb.toml`). The core reverse-proxies
-`/p/<id>/` to it and merges its card into the launcher grid (shown "offline" if the service is down).
-Plugin pages must use relative URLs and may reuse `/static/osnt-map.js` for the shared map and layer catalog.
-A plugin may also serve `GET /tools`: a JSON list of its operations (name, description, path, JSON-schema
-parameters), which is the contract the planned agent layer will use to call plugins.
-
-`cargo deploy [portal|adsb ...]` builds, installs the unit and manifest, and restarts. Everything is pure Rust
-(TLS via rustls with the RustCrypto provider), so no C cross-toolchain is needed.
+Deploy target defaults to `osnt@osnt-pi.local` with key `~/.ssh/osnt_pi_ed25519`; override with `OSNT_DEPLOY_HOST` and
+`OSNT_SSH_KEY`. Core config: `OSNT_BIND` (default `0.0.0.0:8080`), `OSNT_LAYERS`, `OSNT_TOOLS`, `OSNT_PLUGINS_DIR`.
 
 ## Agent API
 
-The core aggregates every plugin's `GET /tools` into one catalogue:
-
 ```bash
-curl http://osnt-pi.local:8080/api/agent/tools                      # all tools with JSON-schema parameters
+curl http://osnt-pi.local:8080/api/agent/tools
 curl -X POST http://osnt-pi.local:8080/api/agent/call -H 'content-type: application/json' \
-  -d '{"tool":"lookup_overview","args":{"q":"example.com"}}'        # call one
+  -d '{"tool":"lookup_overview","args":{"q":"example.com"}}'
 ```
-
-An LLM harness (for example DeepSeek's OpenAI-compatible API) can use the first as its tool list and the second to execute calls.
