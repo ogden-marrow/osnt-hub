@@ -1,0 +1,6 @@
+# Cross-compile for the Raspberry Pi 5 without a C toolchain: static musl + Rust's bundled lld.
+[target.aarch64-unknown-linux-musl]
+linker = "rust-lld"
+
+[alias]
+deploy = "run --release -p osnt-deploy --"

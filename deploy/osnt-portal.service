@@ -1,0 +1,18 @@
+[Unit]
+Description=OSNT portal
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/osnt-portal
+Environment=OSNT_BIND=0.0.0.0:8080
+Restart=on-failure
+RestartSec=2
+DynamicUser=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
