@@ -1042,6 +1042,15 @@ name = "osnt-deploy"
 version = "0.1.0"
 
 [[package]]
+name = "osnt-example"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "osnt-portal"
 version = "0.1.0"
 dependencies = [

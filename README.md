@@ -6,6 +6,7 @@ Open source intelligence portal, written in Rust, deployed straight onto Raspber
 
 - `crates/portal` – axum web server. Static assets (including vendored Leaflet) are embedded in the binary.
 - `crates/adsb` – ADS-B plugin: live/military/emergency aircraft from adsb.lol, position history in an embedded redb file.
+- `crates/example` – minimal plugin to copy (see `docs/PLUGINS.md`; prompt template in `docs/PLUGIN_PROMPT.md`).
 - `crates/deploy` – Rust deploy tool: builds, copies over SSH, installs the systemd unit, restarts.
 - `deploy/osnt-portal.service` – hardened systemd unit (DynamicUser, read-only filesystem).
 - `flash-pi.sh` – one-off SD card flasher for the Pi 5 (Raspberry Pi OS Lite, key-only SSH).
