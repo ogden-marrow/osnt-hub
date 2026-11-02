@@ -1,3 +1,5 @@
+mod tls;
+
 use std::{env, net::SocketAddr, path::PathBuf, time::Duration};
 
 use axum::{
@@ -119,6 +121,10 @@ async fn main() {
         .route("/p/{id}/", any(proxy))
         .route("/p/{id}/{*rest}", any(proxy))
         .route("/static/{*path}", get(static_file));
+
+    if tls::spawn(app.clone()).await {
+        tls::spawn_redirect().await;
+    }
 
     let addr: SocketAddr = env::var("OSNT_BIND")
         .unwrap_or_else(|_| "0.0.0.0:8080".into())
@@ -352,6 +358,8 @@ async fn proxy(req: Request) -> Response {
 
     let (mut head, body) = req.into_parts();
     head.uri = uri;
+    // Browsers may arrive over HTTP/2; plugins speak HTTP/1.1 on loopback.
+    head.version = axum::http::Version::HTTP_11;
     head.headers.remove(header::HOST);
     let req = Request::from_parts(head, body);
 

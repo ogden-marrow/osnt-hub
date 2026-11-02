@@ -7,3 +7,6 @@ license.workspace = true
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 toml = "0.9"
+# Certificate generation runs on the host (your laptop), so a C-backed crypto library is fine here.
+rcgen = { version = "0.13", features = ["x509-parser"] }
+time = "0.3"

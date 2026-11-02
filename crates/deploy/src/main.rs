@@ -5,10 +5,12 @@
 //!   cargo deploy logs [name]         recent service logs
 //!   cargo deploy plugin add <github-folder-url | id> | remove <id> | list | search [term]
 //!   cargo deploy repo add <github-repo-url> | list | remove <url>   (plugin repositories)
+//!   cargo deploy https init | renew | ca   your own CA + the Pi's HTTPS certificate
 //!   cargo deploy token               print the Credentials plugin admin token
 //!
 //! Environment: OSNT_DEPLOY_HOST (default osnt@osnt-pi.local), OSNT_SSH_KEY (default ~/.ssh/osnt_pi_ed25519).
 
+mod https;
 mod plugin;
 
 use std::{
@@ -116,6 +118,15 @@ fn build(c: &Component) -> Result<String, String> {
 }
 
 fn deploy(r: &Remote, c: &Component) -> Result<(), String> {
+    if c.name == "portal" {
+        // HTTPS as code: the CA and the Pi's certificate are created on first deploy and pushed every time.
+        let host = https::host();
+        let created = https::ensure(&host, false)?;
+        https::push(r, &host)?;
+        if created {
+            https::trust_help();
+        }
+    }
     let bin = build(c)?;
     eprintln!("==> {}: copying {bin} to {}", c.name, r.host);
     r.scp(&bin, &format!("/tmp/{}", c.bin))?;
@@ -136,6 +147,7 @@ fn deploy(r: &Remote, c: &Component) -> Result<(), String> {
 fn run(r: &Remote, args: &[String]) -> Result<(), String> {
     match args.first().map(String::as_str) {
         Some("plugin") => plugin::run(r, &args[1..]),
+        Some("https") => https::run(r, &args[1..]),
         Some("repo") => plugin::repo(&args[1..]),
         Some("token") => {
             println!("{}", r.ssh_out("sudo cat /var/lib/osnt-credentials/admin-token")?);
