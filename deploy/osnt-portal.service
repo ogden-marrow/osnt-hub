@@ -6,6 +6,9 @@ Wants=network-online.target
 [Service]
 ExecStart=/usr/local/bin/osnt-portal
 Environment=OSNT_BIND=127.0.0.1:8080
+Environment=OSNT_STATE_DIR=/var/lib/osnt
+StateDirectory=osnt
+UMask=0077
 Environment=OSNT_TLS_BIND=0.0.0.0:443
 Environment=OSNT_HTTP_BIND=0.0.0.0:80
 Environment=OSNT_PUBLIC_HOST=osnt-pi.local

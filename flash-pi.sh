@@ -55,6 +55,7 @@ network:
       optional: true
 EOF
 
+cp "$(dirname "$(readlink -f "$0")")/deploy/OSNT-RESET-PASSKEYS.txt" "$MNT/OSNT-RESET-PASSKEYS.txt"
 sync
 umount "$MNT"; rmdir "$MNT"
 echo "Done. Put the card in the Pi 5, connect Ethernet, power on, then: ssh -i ~/.ssh/osnt_pi_ed25519 ${USER_PI}@${HOSTNAME_PI}.local"

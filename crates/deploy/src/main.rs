@@ -6,10 +6,12 @@
 //!   cargo deploy plugin add <github-folder-url | id> | remove <id> | list | search [term]
 //!   cargo deploy repo add <github-repo-url> | list | remove <url>   (plugin repositories)
 //!   cargo deploy https init | renew | ca   your own CA + the Pi's HTTPS certificate
+//!   cargo deploy auth code | template      arm sign-in setup with a one-time code / place the SD-card reset file
 //!   cargo deploy token               print the Credentials plugin admin token
 //!
 //! Environment: OSNT_DEPLOY_HOST (default osnt@osnt-pi.local), OSNT_SSH_KEY (default ~/.ssh/osnt_pi_ed25519).
 
+mod auth;
 mod https;
 mod plugin;
 
@@ -28,11 +30,10 @@ struct Component {
     unit: &'static str,
 }
 
-const COMPONENTS: &[Component] = &[Component {
-    name: "portal",
-    bin: "osnt-portal",
-    unit: include_str!("../../../deploy/osnt-portal.service"),
-}];
+const COMPONENTS: &[Component] = &[
+    Component { name: "recover", bin: "osnt-recover", unit: include_str!("../../../deploy/osnt-recover.service") },
+    Component { name: "portal", bin: "osnt-portal", unit: include_str!("../../../deploy/osnt-portal.service") },
+];
 
 pub(crate) struct Remote {
     host: String,
@@ -127,6 +128,10 @@ fn deploy(r: &Remote, c: &Component) -> Result<(), String> {
             https::trust_help();
         }
     }
+    if c.name == "recover" {
+        // The service's sandbox needs its directories to exist before it can start.
+        r.ssh("sudo install -d -m 0755 /etc/osnt/recovery", None)?;
+    }
     let bin = build(c)?;
     eprintln!("==> {}: copying {bin} to {}", c.name, r.host);
     r.scp(&bin, &format!("/tmp/{}", c.bin))?;
@@ -148,6 +153,7 @@ fn run(r: &Remote, args: &[String]) -> Result<(), String> {
     match args.first().map(String::as_str) {
         Some("plugin") => plugin::run(r, &args[1..]),
         Some("https") => https::run(r, &args[1..]),
+        Some("auth") => auth::run(r, &args[1..]),
         Some("repo") => plugin::repo(&args[1..]),
         Some("token") => {
             println!("{}", r.ssh_out("sudo cat /var/lib/osnt-credentials/admin-token")?);
@@ -172,9 +178,14 @@ fn run(r: &Remote, args: &[String]) -> Result<(), String> {
             } else {
                 args.iter().map(|a| find(a)).collect::<Result<_, _>>()?
             };
-            // Plugins first so the core finds them up when its launcher next refreshes.
-            for c in chosen.iter().rev() {
+            for c in chosen {
                 deploy(r, c)?;
+                match c.name {
+                    "recover" => auth::template(r)?,
+                    // A brand-new Pi has no passkey yet: open setup right away and print the one-time code.
+                    "portal" if auth::is_fresh(r) => auth::code(r)?,
+                    _ => {}
+                }
             }
             Ok(())
         }

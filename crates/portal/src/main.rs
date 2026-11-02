@@ -1,3 +1,4 @@
+mod auth;
 mod tls;
 
 use std::{env, net::SocketAddr, path::PathBuf, time::Duration};
@@ -9,6 +10,7 @@ use axum::{
     http::{StatusCode, Uri, header},
     response::{IntoResponse, Redirect, Response},
     routing::{any, get, post},
+    middleware,
 };
 use hyper_util::{client::legacy::Client, rt::TokioExecutor};
 use rust_embed::RustEmbed;
@@ -114,13 +116,24 @@ async fn main() {
         .route("/api/health", get(health))
         .route("/api/config", get(config))
         .route("/api/tools", get(tools))
+        .route("/login", get(|| async { serve("login.html") }))
+        .route("/setup", get(|| async { serve("setup.html") }))
+        .route("/auth/status", get(auth::status))
+        .route("/auth/setup/begin", post(auth::setup_begin))
+        .route("/auth/setup/finish", post(auth::setup_finish))
+        .route("/auth/login/begin", post(auth::login_begin))
+        .route("/auth/login/finish", post(auth::login_finish))
+        .route("/auth/passkeys/begin", post(auth::add_begin))
+        .route("/auth/passkeys/finish", post(auth::add_finish))
+        .route("/auth/logout", post(auth::logout))
         .route("/credentials", get(|| async { Redirect::temporary("/p/credentials/") }))
         .route("/api/agent/tools", get(agent_tools))
         .route("/api/agent/call", post(agent_call))
         .route("/p/{id}", get(plugin_root_redirect))
         .route("/p/{id}/", any(proxy))
         .route("/p/{id}/{*rest}", any(proxy))
-        .route("/static/{*path}", get(static_file));
+        .route("/static/{*path}", get(static_file))
+        .layer(middleware::from_fn(auth::gate));
 
     if tls::spawn(app.clone()).await {
         tls::spawn_redirect().await;

@@ -1,0 +1,18 @@
+[Unit]
+Description=OSNT sign-in recovery (reads the reset file on the boot partition)
+After=local-fs.target
+RequiresMountsFor=/boot/firmware
+Before=osnt-portal.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/osnt-recover
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/etc/osnt/recovery /boot/firmware
+
+[Install]
+WantedBy=multi-user.target

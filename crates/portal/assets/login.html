@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OSNT sign in</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: system-ui, sans-serif; background: #0f1419; color: #e6e6e6; }
+    main { width: min(380px, 90vw); padding: 28px; border: 1px solid #243040; border-radius: 12px; background: #151c24; text-align: center; }
+    h1 { margin: 0 0 6px; font-size: 18px; letter-spacing: .1em; }
+    p { margin: 0 0 18px; font-size: 13px; color: #9fb0c0; line-height: 1.45; }
+    button { width: 100%; padding: 12px; font-size: 15px; background: #1d3a34; color: #e6e6e6; border: 1px solid #2f6f5e; border-radius: 8px; cursor: pointer; }
+    button:hover { border-color: #3fae91; } button:disabled { opacity: .6; cursor: wait; }
+    #msg { margin-top: 14px; min-height: 18px; font-size: 13px; color: #ef6c6c; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>OSNT</h1>
+    <p>Sign in with your passkey. There is no password.</p>
+    <button id="go">Sign in with passkey</button>
+    <div id="msg"></div>
+  </main>
+  <script>
+    const $ = id => document.getElementById(id);
+    const b64u = { dec: s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)),
+                   enc: b => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') };
+    const post = (p, body) => fetch(p, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+    const next = () => { const n = new URLSearchParams(location.search).get('next'); return n && n.startsWith('/') && !n.startsWith('//') ? n : '/'; };
+
+    async function signIn() {
+      $('msg').textContent = ''; $('go').disabled = true;
+      try {
+        if (!window.PublicKeyCredential) throw new Error('This browser does not support passkeys (it needs HTTPS and a trusted certificate).');
+        const begin = await post('/auth/login/begin');
+        const opts = await begin.json();
+        if (!begin.ok) { if (begin.status === 409) { location.href = '/setup'; return; } throw new Error(opts.error); }
+        const pk = opts.publicKey;
+        pk.challenge = b64u.dec(pk.challenge);
+        pk.allowCredentials = pk.allowCredentials.map(c => ({ ...c, id: b64u.dec(c.id) }));
+        const cred = await navigator.credentials.get({ publicKey: pk });
+        const r = cred.response;
+        const fin = await post('/auth/login/finish', { ceremony: opts.ceremony, id: cred.id, response: {
+          authenticatorData: b64u.enc(r.authenticatorData), clientDataJSON: b64u.enc(r.clientDataJSON), signature: b64u.enc(r.signature) } });
+        if (!fin.ok) throw new Error((await fin.json()).error);
+        location.href = next();
+      } catch (e) { $('msg').textContent = e.name === 'NotAllowedError' ? 'Cancelled or timed out. Try again.' : e.message; }
+      $('go').disabled = false;
+    }
+    $('go').onclick = signIn;
+    fetch('/auth/status').then(r => r.json()).then(s => { if (s.logged_in) location.href = next(); else if (!s.configured) location.href = '/setup'; });
+  </script>
+</body>
+</html>
