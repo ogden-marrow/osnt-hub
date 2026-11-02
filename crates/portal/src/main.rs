@@ -50,11 +50,24 @@ fn planned() -> String {
 /// A plugin is a separate local service; its manifest tells the core where it listens and how to show it.
 #[derive(Deserialize)]
 struct Manifest {
+    #[serde(default, rename = "secret")]
+    secrets: Vec<SecretSpec>,
     id: String,
     name: String,
     description: String,
     grid: String,
     port: u16,
+}
+
+/// A credential a plugin needs, declared in its manifest as `[[secret]]`.
+#[derive(Deserialize, Clone)]
+struct SecretSpec {
+    name: String,
+    label: String,
+    #[serde(default)]
+    help_url: Option<String>,
+    #[serde(default)]
+    required: bool,
 }
 
 #[derive(Serialize, Deserialize)]

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Flash Raspberry Pi OS Lite (arm64) to the SD card and seed a bare-bones cloud-init.
-# Usage: sudo ./flash-pi.sh /dev/mmcblk0
+# Usage: sudo OSNT_IMG=/path/to/raspios-lite-arm64.img.xz ./flash-pi.sh /dev/mmcblk0
 set -euo pipefail
 
 DEV="${1:?usage: sudo $0 /dev/mmcblk0}"
-IMG=/tmp/claude-1000/-home-jpalenchar-Apps-That-I-Want-OSNT-Tool/959f7a10-0a09-46bc-845a-8b4ace4295af/scratchpad/img/2026-10-06-raspios-trixie-arm64-lite.img.xz
+IMG="${OSNT_IMG:?set OSNT_IMG to the downloaded raspios_lite_arm64 .img.xz (https://www.raspberrypi.com/software/operating-systems/)}"
 PUBKEY_FILE="/home/${SUDO_USER:-jpalenchar}/.ssh/osnt_pi_ed25519.pub"
 HOSTNAME_PI=osnt-pi
 USER_PI=osnt

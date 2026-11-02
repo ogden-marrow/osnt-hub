@@ -1076,6 +1076,7 @@ name = "osnt-common"
 version = "0.1.0"
 dependencies = [
  "rustls-rustcrypto",
+ "serde_json",
  "ureq",
 ]
 

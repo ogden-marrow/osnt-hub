@@ -16,3 +16,23 @@ pub fn http_agent(user_agent: &str) -> ureq::Agent {
         .build()
         .into()
 }
+
+/// Look up a credential by name (for example `DEEPSEEK_API_KEY`). An environment variable of the same name wins
+/// (handy for local development); otherwise the portal core's credential store is asked over loopback.
+/// Blocking. Returns None when the credential is not set. Never log the returned value.
+pub fn secret(name: &str) -> Option<String> {
+    if name.is_empty() || !name.bytes().all(|b| b.is_ascii_uppercase() || b.is_ascii_digit() || b == b'_') {
+        return None;
+    }
+    if let Ok(v) = std::env::var(name) {
+        if !v.is_empty() {
+            return Some(v);
+        }
+    }
+    let core = std::env::var("OSNT_CORE").unwrap_or_else(|_| "127.0.0.1:8080".into());
+    let agent: ureq::Agent = ureq::Agent::config_builder().timeout_global(Some(Duration::from_secs(3))).build().into();
+    // The custom header means a plain GET smuggled through some other fetcher (SSRF) cannot read secrets.
+    let mut res = agent.get(&format!("http://{core}/internal/secrets/{name}")).header("X-OSNT-Internal", "1").call().ok()?;
+    let v: serde_json::Value = res.body_mut().read_json().ok()?;
+    v["value"].as_str().map(str::to_owned)
+}
