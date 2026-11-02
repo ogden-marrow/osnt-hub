@@ -1,8 +1,9 @@
-//! Deploys the OSNT portal to a Raspberry Pi over SSH.
+//! Deploys OSNT components to a Raspberry Pi over SSH.
 //!
-//!   cargo deploy            build, copy, install unit, restart
-//!   cargo deploy status     show service status
-//!   cargo deploy logs       tail service logs
+//!   cargo deploy                     build and deploy everything
+//!   cargo deploy adsb [portal ...]   deploy only the named components
+//!   cargo deploy status [name]       show service status
+//!   cargo deploy logs [name]         recent service logs
 //!
 //! Environment: OSNT_DEPLOY_HOST (default osnt@osnt-pi.local), OSNT_SSH_KEY (default ~/.ssh/osnt_pi_ed25519).
 
@@ -13,8 +14,24 @@ use std::{
 };
 
 const TARGET: &str = "aarch64-unknown-linux-musl";
-const BIN: &str = "osnt-portal";
-const UNIT: &str = include_str!("../../../deploy/osnt-portal.service");
+
+/// One deployable: a binary, its systemd unit and, for plugins, the manifest the core discovers.
+struct Component {
+    name: &'static str,
+    bin: &'static str,
+    unit: &'static str,
+    manifest: Option<(&'static str, &'static str)>,
+}
+
+const COMPONENTS: &[Component] = &[
+    Component { name: "portal", bin: "osnt-portal", unit: include_str!("../../../deploy/osnt-portal.service"), manifest: None },
+    Component {
+        name: "adsb",
+        bin: "osnt-adsb",
+        unit: include_str!("../../../deploy/osnt-adsb.service"),
+        manifest: Some(("adsb.toml", include_str!("../../../deploy/plugins.d/adsb.toml"))),
+    },
+];
 
 struct Remote {
     host: String,
@@ -65,40 +82,78 @@ fn check(status: std::process::ExitStatus, what: &str) -> Result<(), String> {
     status.success().then_some(()).ok_or_else(|| format!("{what} failed: {status}"))
 }
 
-fn build() -> Result<String, String> {
+fn find(name: &str) -> Result<&'static Component, String> {
+    COMPONENTS.iter().find(|c| c.name == name).ok_or_else(|| {
+        let known: Vec<_> = COMPONENTS.iter().map(|c| c.name).collect();
+        format!("unknown component {name:?} (known: {})", known.join(", "))
+    })
+}
+
+fn build(c: &Component) -> Result<String, String> {
     let status = Command::new("cargo")
-        .args(["build", "--release", "-p", BIN, "--target", TARGET])
+        .args(["build", "--release", "-p", c.bin, "--target", TARGET])
         .status()
         .map_err(|e| format!("cargo: {e}"))?;
     check(status, "cargo build")?;
-    Ok(format!("target/{TARGET}/release/{BIN}"))
+    Ok(format!("target/{TARGET}/release/{}", c.bin))
 }
 
-fn deploy(r: &Remote) -> Result<(), String> {
-    let bin = build()?;
-    eprintln!("==> copying {bin} to {}", r.host);
-    r.scp(&bin, &format!("/tmp/{BIN}"))?;
-    eprintln!("==> installing and restarting {BIN}");
+fn deploy(r: &Remote, c: &Component) -> Result<(), String> {
+    let bin = build(c)?;
+    eprintln!("==> {}: copying {bin} to {}", c.name, r.host);
+    r.scp(&bin, &format!("/tmp/{}", c.bin))?;
+
+    if let Some((file, content)) = c.manifest {
+        eprintln!("==> {}: installing plugin manifest", c.name);
+        r.ssh(&format!("sudo mkdir -p /etc/osnt/plugins.d && sudo tee /etc/osnt/plugins.d/{file} >/dev/null"), Some(content))?;
+    }
+
+    eprintln!("==> {}: installing and restarting service", c.name);
+    let bin_name = c.bin;
     r.ssh(
         &format!(
-            "sudo install -m 0755 /tmp/{BIN} /usr/local/bin/{BIN} && rm /tmp/{BIN} \
-             && sudo tee /etc/systemd/system/{BIN}.service >/dev/null \
-             && sudo systemctl daemon-reload && sudo systemctl enable {BIN} \
-             && sudo systemctl restart {BIN} && sleep 1 && systemctl is-active {BIN}"
+            "sudo install -m 0755 /tmp/{bin_name} /usr/local/bin/{bin_name} && rm /tmp/{bin_name} \
+             && sudo tee /etc/systemd/system/{bin_name}.service >/dev/null \
+             && sudo systemctl daemon-reload && sudo systemctl enable {bin_name} \
+             && sudo systemctl restart {bin_name} && sleep 1 && systemctl is-active {bin_name}"
         ),
-        Some(UNIT),
+        Some(c.unit),
     )
 }
 
+fn run(r: &Remote, args: &[String]) -> Result<(), String> {
+    match args.first().map(String::as_str) {
+        Some(verb @ ("status" | "logs")) => {
+            let units: Vec<&str> = match args.get(1) {
+                Some(name) => vec![find(name)?.bin],
+                None => COMPONENTS.iter().map(|c| c.bin).collect(),
+            };
+            for unit in units {
+                let cmd = if verb == "status" { format!("systemctl status {unit} --no-pager") } else { format!("journalctl -u {unit} -n 40 --no-pager") };
+                eprintln!("==> {unit}");
+                // status exits non-zero for inactive units; keep going so every component is shown.
+                let _ = r.ssh(&cmd, None);
+            }
+            Ok(())
+        }
+        _ => {
+            let chosen: Vec<&Component> = if args.is_empty() {
+                COMPONENTS.iter().collect()
+            } else {
+                args.iter().map(|a| find(a)).collect::<Result<_, _>>()?
+            };
+            // Plugins first so the core finds them up when its launcher next refreshes.
+            for c in chosen.iter().rev() {
+                deploy(r, c)?;
+            }
+            Ok(())
+        }
+    }
+}
+
 fn main() -> ExitCode {
-    let r = Remote::from_env();
-    let result = match env::args().nth(1).as_deref() {
-        None | Some("deploy") => deploy(&r),
-        Some("status") => r.ssh(&format!("systemctl status {BIN} --no-pager"), None),
-        Some("logs") => r.ssh(&format!("journalctl -u {BIN} -n 50 --no-pager"), None),
-        Some(other) => Err(format!("unknown command {other:?} (deploy | status | logs)")),
-    };
-    match result {
+    let args: Vec<String> = env::args().skip(1).collect();
+    match run(&Remote::from_env(), &args) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("error: {e}");

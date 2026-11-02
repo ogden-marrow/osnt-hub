@@ -1,0 +1,19 @@
+[package]
+name = "osnt-adsb"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow = "1"
+axum = "0.8"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "time"] }
+serde = { version = "1", features = ["derive", "rc"] }
+serde_json = "1"
+redb = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+# Pure-Rust TLS (RustCrypto provider) so the plugin cross-compiles to the Pi without a C toolchain.
+ureq = { version = "3", default-features = false, features = ["rustls-no-provider", "rustls-webpki-roots", "gzip", "json"] }
+rustls = { version = "0.23", default-features = false, features = ["std", "tls12"] }
+rustls-rustcrypto = "0.0.2-alpha"

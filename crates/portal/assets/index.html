@@ -44,7 +44,7 @@
           if (isLive) { card.href = t.href; live++; }
           const title = document.createElement('h3');
           title.append(t.name);
-          const badge = document.createElement('span'); badge.className = 'badge'; badge.textContent = isLive ? 'open' : 'planned';
+          const badge = document.createElement('span'); badge.className = 'badge'; badge.textContent = isLive ? 'open' : (t.status === 'offline' ? 'offline' : 'planned');
           title.append(badge);
           const p = document.createElement('p'); p.textContent = t.description;
           card.append(title, p); g.append(card);

@@ -5,6 +5,7 @@ Open source intelligence portal, written in Rust, deployed straight onto Raspber
 ## Layout
 
 - `crates/portal` – axum web server. Static assets (including vendored Leaflet) are embedded in the binary.
+- `crates/adsb` – ADS-B plugin: live/military/emergency aircraft from adsb.lol, position history in an embedded redb file.
 - `crates/deploy` – Rust deploy tool: builds, copies over SSH, installs the systemd unit, restarts.
 - `deploy/osnt-portal.service` – hardened systemd unit (DynamicUser, read-only filesystem).
 - `flash-pi.sh` – one-off SD card flasher for the Pi 5 (Raspberry Pi OS Lite, key-only SSH).
@@ -24,3 +25,15 @@ Deploy target defaults to `osnt@osnt-pi.local` with key `~/.ssh/osnt_pi_ed25519`
 
 Map layers (`crates/portal/layers.toml`) are streamed from public tile services on demand; nothing is stored locally.
 Check each provider's usage policy before real traffic (the public OSM tile server in particular).
+
+## Plugins
+
+A plugin is a separate Rust service on loopback plus a manifest in `/etc/osnt/plugins.d/<id>.toml`
+(`id`, `name`, `description`, `grid`, `port`; see `deploy/plugins.d/adsb.toml`). The core reverse-proxies
+`/p/<id>/` to it and merges its card into the launcher grid (shown "offline" if the service is down).
+Plugin pages must use relative URLs and may reuse `/static/osnt-map.js` for the shared map and layer catalog.
+A plugin may also serve `GET /tools`: a JSON list of its operations (name, description, path, JSON-schema
+parameters), which is the contract the planned agent layer will use to call plugins.
+
+`cargo deploy [portal|adsb ...]` builds, installs the unit and manifest, and restarts. Everything is pure Rust
+(TLS via rustls with the RustCrypto provider), so no C cross-toolchain is needed.

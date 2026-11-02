@@ -11,5 +11,6 @@ rust-embed = "8"
 mime_guess = "2"
 serde = { version = "1", features = ["derive"] }
 toml = "0.9"
+hyper-util = { version = "0.1", features = ["client-legacy", "http1", "tokio"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

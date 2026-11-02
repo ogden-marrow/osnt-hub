@@ -19,10 +19,6 @@ description = "Compare NASA GIBS satellite imagery across dates."
 name = "Air & Sea"
 
 [[grid.tool]]
-name = "Aircraft (ADS-B)"
-description = "Live aircraft tracking and ADS-B data processing."
-
-[[grid.tool]]
 name = "Vessels (AIS)"
 description = "Ship positions and voyages from AIS feeds."
 
