@@ -57,6 +57,9 @@ network:
       optional: true
 EOF
 
+# The Raspberry Pi OS switch: an empty file named ssh on the boot partition enables sshd at boot (belt and braces with enable_ssh).
+touch "$MNT/ssh"
+
 cp "$(dirname "$(readlink -f "$0")")/deploy/OSNT-RESET-PASSKEYS.txt" "$MNT/OSNT-RESET-PASSKEYS.txt"
 sync
 umount "$MNT"; rmdir "$MNT"
