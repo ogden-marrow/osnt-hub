@@ -299,6 +299,10 @@ fn add(r: &Remote, target: &str, yes: bool) -> Result<(), String> {
         if !p.requires.is_empty() {
             eprintln!("  requires: {}", p.requires.join(", "));
         }
+        if !p.system.is_empty() {
+            eprintln!("  needs system software on the Pi: {}", p.system.approvals().join(", "));
+            eprintln!("  (this command does not install it; the web installer on the Packages page does, after you approve it)");
+        }
         if !p.provides.is_empty() {
             eprintln!("  provides APIs: {}", p.provides.join(", "));
         }

@@ -21,7 +21,7 @@ use std::{
 };
 
 use hmac::{Hmac, Mac};
-use osnt_pluginfmt::{PluginToml, manifest_for, unit_for, valid_id};
+use osnt_pluginfmt::{PluginToml, SystemDeps, manifest_for, unit_for, valid_id};
 use serde::Deserialize;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -57,6 +57,9 @@ struct Request {
     repo: String,
     #[serde(default)]
     purge: bool,
+    /// What the user approved in the dialog ("apt:ffmpeg", "download:<url>"); the build may install nothing else.
+    #[serde(default)]
+    approved: Vec<String>,
 }
 
 /// Progress record the page polls: queued -> running -> done | failed.
@@ -223,6 +226,87 @@ fn is_active(unit: &str) -> bool {
     Command::new("systemctl").args(["is-active", "--quiet", unit]).status().is_ok_and(|s| s.success())
 }
 
+/// Everything the plugin wants installed that the user has not approved.
+fn unapproved(need: &[String], approved: &[String]) -> Vec<String> {
+    need.iter().filter(|n| !approved.contains(n)).cloned().collect()
+}
+
+const PATH_DIRS: [&str; 6] = ["/usr/local/bin", "/usr/bin", "/bin", "/usr/local/sbin", "/usr/sbin", "/sbin"];
+
+/// Is a program of this name already on the machine? Downloads never shadow or replace an existing one.
+fn on_path(name: &str) -> bool {
+    let root = env::var("OSNT_HELPER_ROOT").unwrap_or_default();
+    PATH_DIRS.iter().any(|d| Path::new(&format!("{root}{d}/{name}")).exists())
+}
+
+fn apt_installed(pkg: &str) -> bool {
+    Command::new("dpkg-query").args(["-W", "-f=${Status}", pkg]).output().is_ok_and(|o| String::from_utf8_lossy(&o.stdout).contains("install ok installed"))
+}
+
+fn apt_install(pkgs: &[String]) -> Result<(), String> {
+    let run = |args: &[&str]| Command::new("apt-get").env("DEBIAN_FRONTEND", "noninteractive").args(args).output().map_err(|e| format!("apt-get: {e}"));
+    let mut install: Vec<&str> = vec!["install", "-y", "--no-install-recommends"];
+    install.extend(pkgs.iter().map(String::as_str));
+    let mut out = run(&install)?;
+    if !out.status.success() {
+        // The package lists may be stale (a fresh image): refresh once and retry.
+        let _ = run(&["update"]);
+        out = run(&install)?;
+    }
+    if out.status.success() {
+        return Ok(());
+    }
+    let err = String::from_utf8_lossy(&out.stderr);
+    let tail: String = err.trim().chars().rev().take(400).collect::<Vec<_>>().into_iter().rev().collect();
+    Err(format!("could not install {}: {tail}", pkgs.join(", ")))
+}
+
+fn download_program(p: &Paths, agent: &ureq::Agent, d: &osnt_pluginfmt::Download, job: &mut Job) -> Result<(), String> {
+    let fetch = |url: &str, limit: u64| -> Result<Vec<u8>, String> {
+        let mut r = agent.get(url).call().map_err(|e| format!("could not download {url}: {e}"))?;
+        r.body_mut().with_config().limit(limit).read_to_vec().map_err(|e| format!("could not download {url}: {e}"))
+    };
+    let data = fetch(&d.url, 150 * 1024 * 1024)?;
+    match &d.sha256_url {
+        Some(u) => {
+            let sums = String::from_utf8_lossy(&fetch(u, MAX_MANIFEST)?).to_string();
+            let file = d.url.rsplit('/').next().unwrap_or("");
+            let want = sums.lines().find_map(|l| {
+                let mut it = l.split_whitespace();
+                let (h, f) = (it.next()?, it.next()?);
+                (f.trim_start_matches('*') == file).then(|| h.to_ascii_lowercase())
+            });
+            if want.as_deref() != Some(&sha256_hex(&data)) {
+                return Err(format!("{} does not match its published checksum; refusing to install it", d.name));
+            }
+            job.step(&format!("{} checksum verified", d.name));
+        }
+        None => job.step(&format!("{} has no published checksum to verify", d.name)),
+    }
+    write_atomic(&p.bin.join(&d.name), &data, 0o755)
+}
+
+fn install_system(p: &Paths, sys: &SystemDeps, job: &mut Job) -> Result<Vec<String>, String> {
+    let mut done = vec![];
+    let missing: Vec<String> = sys.apt.iter().filter(|a| !apt_installed(a)).cloned().collect();
+    if !missing.is_empty() {
+        job.step(&format!("Installing system packages: {}", missing.join(", ")));
+        apt_install(&missing)?;
+        done.extend(missing.iter().map(|a| format!("apt:{a}")));
+    }
+    let agent = agent();
+    for d in &sys.download {
+        if on_path(&d.name) {
+            job.step(&format!("{} is already installed", d.name));
+            continue;
+        }
+        job.step(&format!("Downloading {}", d.name));
+        download_program(p, &agent, d, job)?;
+        done.push(format!("download:{}", d.url));
+    }
+    Ok(done)
+}
+
 fn install(p: &Paths, req: &Request, job: &mut Job) -> Result<String, String> {
     if !valid_id(&req.id) {
         return Err("invalid plugin id".into());
@@ -264,13 +348,19 @@ fn install(p: &Paths, req: &Request, job: &mut Job) -> Result<String, String> {
     if let Some(missing) = plugin.requires.iter().find(|d| !p.etc.join("plugins.d").join(format!("{d}.toml")).exists()) {
         return Err(format!("it needs '{missing}' installed first"));
     }
+    let need = plugin.system.approvals();
+    let missing = unapproved(&need, &req.approved);
+    if !missing.is_empty() {
+        return Err(format!("this build also needs {}, which you have not approved. Open the install dialog again to review it", missing.join(", ")));
+    }
+    let system_done = if plugin.system.is_empty() { vec![] } else { install_system(p, &plugin.system, job)? };
     job.step("Installing");
     let id = &plugin.id;
     let hash = token_env(p, id)?;
     fs::create_dir_all(p.etc.join("plugins.d")).and_then(|_| fs::create_dir_all(p.etc.join("installed.d"))).map_err(|e| e.to_string())?;
     write_atomic(&p.bin.join(format!("osnt-{id}")), &binary, 0o755)?;
     write_atomic(&p.etc.join("plugins.d").join(format!("{id}.toml")), manifest_for(&plugin, &hash).as_bytes(), 0o644)?;
-    let record = json!({ "id": id, "name": plugin.name, "version": plugin.version, "source": format!("release:{canonical}"), "commit": "", "binary_sha256": sha256_hex(&binary), "requires": plugin.requires });
+    let record = json!({ "id": id, "name": plugin.name, "version": plugin.version, "source": format!("release:{canonical}"), "commit": "", "binary_sha256": sha256_hex(&binary), "requires": plugin.requires, "system": system_done });
     write_atomic(&p.etc.join("installed.d").join(format!("{id}.json")), record.to_string().as_bytes(), 0o644)?;
     write_atomic(&p.units.join(format!("osnt-{id}.service")), unit_for(&plugin).as_bytes(), 0o644)?;
     let unit = format!("osnt-{id}.service");
@@ -401,6 +491,15 @@ mod tests {
     }
 
     #[test]
+    fn only_approved_system_software_may_be_installed() {
+        let need = vec!["apt:ffmpeg".to_string(), "download:https://github.com/a/b/c/d".to_string()];
+        assert!(unapproved(&need, &need).is_empty());
+        assert_eq!(unapproved(&need, &["apt:ffmpeg".to_string()]), vec!["download:https://github.com/a/b/c/d"]);
+        assert_eq!(unapproved(&need, &[]).len(), 2);
+        assert!(unapproved(&[], &[]).is_empty());
+    }
+
+    #[test]
     fn checksum_is_lowercase_hex_sha256() {
         assert_eq!(sha256_hex(b"abc"), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
     }
@@ -413,7 +512,7 @@ mod tests {
         fs::write(p.etc.join("installed.d/child.json"), r#"{"id":"child","requires":["base"]}"#).unwrap();
         let mut job = Job { file: dir.join("job.json"), id: "j".into(), action: "remove".into(), plugin: "x".into(), log: vec![] };
         fs::create_dir_all(&dir).unwrap();
-        let req = |id: &str| Request { job: "abcdef012".into(), action: "remove".into(), id: id.into(), repo: String::new(), purge: false };
+        let req = |id: &str| Request { job: "abcdef012".into(), action: "remove".into(), id: id.into(), repo: String::new(), purge: false, approved: vec![] };
         assert!(remove(&p, &req("packages"), &mut job).unwrap_err().contains("cannot be removed"));
         assert!(remove(&p, &req("base"), &mut job).unwrap_err().contains("child"));
         let _ = fs::remove_dir_all(&dir);

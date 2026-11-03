@@ -31,6 +31,18 @@ cargo deploy plugin list
 cargo deploy plugin remove map [--purge]
 ```
 
+## Installing plugins from the web UI
+
+Open **Settings > Packages** (`/settings#packages`). Add a package repository (a GitHub link), connect GitHub if it is private
+(device flow: you type a short code at github.com/login/device), then click **Install** / **Update** / **Uninstall** on any package.
+
+How it works: the Packages plugin is sandboxed and cannot install anything itself. A click drops a request file in its state
+directory; a systemd path unit (`osnt-helper.path`) starts `osnt-helper`, a small root service that downloads the plugin's
+prebuilt Pi build from the repository's `latest` release, verifies its SHA-256 against `manifest.json`, accepts only
+`plugin.toml` and the binary, validates the manifest with the same rules as `cargo deploy plugin add`, and writes the same
+sandboxed systemd unit. Progress is a job file the page polls. Deploy the helper once with `cargo deploy helper`
+(a plain `cargo deploy` includes it). The plugin repository builds those releases in CI (`.github/workflows/release.yml`).
+
 ## Sign-in: passkeys only
 
 There are no passwords and no setup code. A new hub has no passkey, so the first visit to `https://osnt-pi.local/setup`

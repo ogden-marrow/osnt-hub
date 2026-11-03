@@ -4,13 +4,12 @@ Description=OSNT package installer (runs when the Packages page queues a request
 [Service]
 Type=oneshot
 ExecStart=/usr/local/bin/osnt-helper
-TimeoutStartSec=600
+TimeoutStartSec=1800
+# Installing system packages (apt) writes all over the filesystem, so this service cannot use ProtectSystem=strict.
 NoNewPrivileges=yes
-ProtectSystem=strict
 ProtectHome=yes
 PrivateTmp=yes
 ProtectKernelTunables=yes
 ProtectControlGroups=yes
 LockPersonality=yes
 RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
-ReadWritePaths=/etc/osnt /etc/systemd/system /usr/local/bin /var/lib

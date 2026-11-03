@@ -24,6 +24,58 @@ pub struct PluginToml {
     pub service: Service,
     #[serde(default, rename = "secret")]
     pub secrets: Vec<Secret>,
+    /// Software the plugin needs on the machine itself. Installed by the web installer only after the user approves it.
+    #[serde(default)]
+    pub system: SystemDeps,
+}
+
+/// `[system]` in plugin.toml:
+///
+/// ```toml
+/// [system]
+/// apt = ["ffmpeg"]                                   # Raspberry Pi OS packages
+/// [[system.download]]                                # a program downloaded from a GitHub release
+/// name = "yt-dlp"
+/// url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux_aarch64"
+/// sha256_url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/SHA2-256SUMS"   # optional
+/// ```
+#[derive(Deserialize, Default, Clone)]
+pub struct SystemDeps {
+    #[serde(default)]
+    pub apt: Vec<String>,
+    #[serde(default)]
+    pub download: Vec<Download>,
+}
+
+#[derive(Deserialize, Clone)]
+pub struct Download {
+    /// File name under /usr/local/bin.
+    pub name: String,
+    pub url: String,
+    /// A checksum file (lines of `<sha256>  <file name>`) from the same project; without it the download is unverified.
+    #[serde(default)]
+    pub sha256_url: Option<String>,
+}
+
+impl SystemDeps {
+    pub fn is_empty(&self) -> bool {
+        self.apt.is_empty() && self.download.is_empty()
+    }
+
+    /// Stable strings naming each thing that would be installed. The page shows them, the user approves them, and the
+    /// helper installs only what was approved.
+    pub fn approvals(&self) -> Vec<String> {
+        self.apt.iter().map(|a| format!("apt:{a}")).chain(self.download.iter().map(|d| format!("download:{}", d.url))).collect()
+    }
+}
+
+pub fn valid_apt_name(s: &str) -> bool {
+    (2..=64).contains(&s.len()) && s.as_bytes()[0].is_ascii_alphanumeric() && s.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || matches!(b, b'+' | b'.' | b'-'))
+}
+
+fn github_url(u: &str) -> bool {
+    u.len() <= 240
+        && u.strip_prefix("https://github.com/").is_some_and(|rest| rest.split('/').count() >= 4 && rest.split('/').all(|seg| !seg.is_empty() && seg != ".." && seg != "." && seg.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'-'))))
 }
 
 #[derive(Deserialize, Default)]
@@ -75,6 +127,18 @@ pub fn validate(p: &PluginToml) -> Result<(), String> {
     for s in &p.secrets {
         if !valid_env_name(&s.name) || !clean(&s.label) || s.help_url.as_deref().is_some_and(|u| !u.starts_with("https://") || !clean(u)) {
             return Err(format!("secret {} is not valid", s.name));
+        }
+    }
+    if p.system.apt.len() > 10 || !p.system.apt.iter().all(|a| valid_apt_name(a)) {
+        return Err("system.apt must list at most 10 plain package names".into());
+    }
+    if p.system.download.len() > 3 {
+        return Err("system.download may list at most 3 programs".into());
+    }
+    for d in &p.system.download {
+        let name_ok = (1..=40).contains(&d.name.len()) && d.name.as_bytes()[0].is_ascii_alphanumeric() && d.name.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || matches!(b, b'.' | b'_' | b'-')) && !d.name.starts_with("osnt-");
+        if !name_ok || !github_url(&d.url) || d.sha256_url.as_deref().is_some_and(|u| !github_url(u)) {
+            return Err(format!("system.download entry '{}' is not allowed (a plain name, and https://github.com/ release URLs only)", d.name));
         }
     }
     Ok(())
@@ -132,6 +196,27 @@ mod tests {
         let m = manifest_for(&p, "abc");
         assert!(m.contains("requires = [\"adsb\"]") && m.contains("[[secret]]") && m.contains("version = \"1.0.0\""));
         toml::from_str::<toml::Value>(&m).expect("manifest is valid toml");
+    }
+
+    #[test]
+    fn system_dependencies_are_parsed_validated_and_listed() {
+        let mut p = sample();
+        p.system = toml::from_str("apt = [\"ffmpeg\"]\n[[download]]\nname = \"yt-dlp\"\nurl = \"https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux_aarch64\"\nsha256_url = \"https://github.com/yt-dlp/yt-dlp/releases/latest/download/SHA2-256SUMS\"\n").unwrap();
+        validate(&p).unwrap();
+        assert_eq!(p.system.approvals(), vec!["apt:ffmpeg", "download:https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux_aarch64"]);
+        for bad in ["Ffmpeg", "a b", "-x", "x;rm", "a", "../x"] {
+            let mut q = sample();
+            q.system.apt = vec![bad.into()];
+            assert!(validate(&q).is_err(), "{bad}");
+        }
+        for url in ["http://github.com/a/b/c/d", "https://evil.com/a/b/c/d", "https://github.com/a/b", "https://github.com/a/../c/d", "https://github.com.evil.com/a/b/c/d"] {
+            let mut q = sample();
+            q.system.download = vec![Download { name: "tool".into(), url: url.into(), sha256_url: None }];
+            assert!(validate(&q).is_err(), "{url}");
+        }
+        let mut q = sample();
+        q.system.download = vec![Download { name: "osnt-evil".into(), url: "https://github.com/a/b/releases/x".into(), sha256_url: None }];
+        assert!(validate(&q).is_err());
     }
 
     #[test]
