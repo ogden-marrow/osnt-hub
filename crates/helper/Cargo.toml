@@ -1,0 +1,18 @@
+[package]
+name = "osnt-helper"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+osnt-pluginfmt = { path = "../pluginfmt" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.9"
+sha2 = "0.10"
+hmac = "0.12"
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+tar = { version = "0.4", default-features = false }
+# Pure-Rust TLS (RustCrypto provider), same as the plugins: no C toolchain is needed to cross-compile.
+ureq = { version = "3", default-features = false, features = ["rustls-no-provider", "rustls-webpki-roots", "gzip", "json"] }
+rustls-rustcrypto = "0.0.2-alpha"

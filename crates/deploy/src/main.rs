@@ -33,7 +33,11 @@ struct Component {
 const COMPONENTS: &[Component] = &[
     Component { name: "recover", bin: "osnt-recover", unit: include_str!("../../../deploy/osnt-recover.service") },
     Component { name: "portal", bin: "osnt-portal", unit: include_str!("../../../deploy/osnt-portal.service") },
+    Component { name: "helper", bin: "osnt-helper", unit: include_str!("../../../deploy/osnt-helper.service") },
 ];
+
+/// The helper is started by a path unit when the Packages page queues a request, not run as a daemon.
+const HELPER_PATH_UNIT: &str = include_str!("../../../deploy/osnt-helper.path");
 
 pub(crate) struct Remote {
     host: String,
@@ -140,6 +144,15 @@ fn deploy(r: &Remote, c: &Component) -> Result<(), String> {
     eprintln!("==> {}: copying {bin} to {}", c.name, r.host);
     r.scp(&bin, &format!("/tmp/{}", c.bin))?;
 
+    if c.name == "helper" {
+        eprintln!("==> helper: installing the service and its path watcher");
+        r.ssh("sudo install -m 0755 /tmp/osnt-helper /usr/local/bin/osnt-helper && rm /tmp/osnt-helper && sudo tee /etc/systemd/system/osnt-helper.service >/dev/null", Some(c.unit))?;
+        return r.ssh(
+            "sudo tee /etc/systemd/system/osnt-helper.path >/dev/null && sudo systemctl daemon-reload && sudo systemctl enable --now osnt-helper.path && systemctl is-active osnt-helper.path",
+            Some(HELPER_PATH_UNIT),
+        );
+    }
+
     eprintln!("==> {}: installing and restarting service", c.name);
     let bin_name = c.bin;
     r.ssh(
@@ -165,7 +178,7 @@ fn run(r: &Remote, args: &[String]) -> Result<(), String> {
                 None => COMPONENTS.iter().map(|c| c.bin).collect(),
             };
             for unit in units {
-                let cmd = if verb == "status" { format!("systemctl status {unit} --no-pager") } else { format!("journalctl -u {unit} -n 40 --no-pager") };
+                let cmd = if verb == "status" { format!("systemctl status {unit} {} --no-pager", if unit == "osnt-helper" { "osnt-helper.path" } else { "" }) } else { format!("journalctl -u {unit} -n 40 --no-pager") };
                 eprintln!("==> {unit}");
                 // status exits non-zero for inactive units; keep going so every component is shown.
                 let _ = r.ssh(&cmd, None);
