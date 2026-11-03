@@ -20,7 +20,7 @@ repository list (re-add), passkeys (create again), plugin data (the aircraft pos
    green light to stop, put the card in your computer.
 3. **Flash.** Find the card with `lsblk` (it is the removable one, for example `/dev/mmcblk0`), then:
    `sudo OSNT_IMG=~/Downloads/<image>.img.xz ./flash-pi.sh /dev/mmcblk0` and type `yes`. The script refuses a system
-   disk. It writes the image, your SSH key, the hostname `osnt-pi`, wired DHCP and the passkey reset file.
+   disk. It writes the image, your SSH key, `enable_ssh: true` (without it sshd stays off and the Pi refuses SSH), the hostname `osnt-pi`, wired DHCP and the passkey reset file.
 4. **Boot.** Card in the Pi 5, Ethernet in, power on, wait 3 minutes (first boot runs cloud-init).
 5. **SSH.** `ssh-keygen -R osnt-pi.local` (the host key changed), then
    `ssh -i ~/.ssh/osnt_pi_ed25519 osnt@osnt-pi.local true`.

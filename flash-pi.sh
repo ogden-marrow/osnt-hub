@@ -33,6 +33,8 @@ cat > "$MNT/user-data" <<EOF
 hostname: ${HOSTNAME_PI}
 manage_etc_hosts: true
 timezone: UTC
+# Raspberry Pi OS leaves sshd off unless this is set; without it the first boot is unreachable.
+enable_ssh: true
 disable_root: true
 ssh_pwauth: false
 users:
