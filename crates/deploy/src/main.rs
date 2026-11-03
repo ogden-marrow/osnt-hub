@@ -1,6 +1,7 @@
 //! Deploys OSNT components to a Raspberry Pi over SSH.
 //!
 //!   cargo deploy                     build and deploy the portal (the hub core)
+//!   cargo deploy bootstrap           everything a fresh Pi needs: recover, portal, helper, then the Packages and Credentials plugins
 //!   cargo deploy status [name]       show service status
 //!   cargo deploy logs [name]         recent service logs
 //!   cargo deploy plugin add <github-folder-url | id> | remove <id> | list | search [term]
@@ -172,6 +173,7 @@ fn run(r: &Remote, args: &[String]) -> Result<(), String> {
         Some("https") => https::run(r, &args[1..]),
         Some("auth") => auth::run(r, &args[1..]),
         Some("repo") => plugin::repo(&args[1..]),
+        Some("bootstrap") => bootstrap(r),
         Some(verb @ ("status" | "logs")) => {
             let units: Vec<&str> = match args.get(1) {
                 Some(name) => vec![find(name)?.bin],
@@ -191,18 +193,46 @@ fn run(r: &Remote, args: &[String]) -> Result<(), String> {
             } else {
                 args.iter().map(|a| find(a)).collect::<Result<_, _>>()?
             };
-            for c in chosen {
-                deploy(r, c)?;
-                match c.name {
-                    "recover" => auth::template(r)?,
-                    // A brand-new Pi has no passkey yet: setup is open, so just say where to go.
-                    "portal" if auth::is_fresh(r) => eprintln!("\nNo passkey yet. Open https://{}/setup and create yours.", https::host()),
-                    _ => {}
-                }
-            }
-            Ok(())
+            deploy_all(r, &chosen)
         }
     }
+}
+
+fn deploy_all(r: &Remote, chosen: &[&Component]) -> Result<(), String> {
+    for c in chosen {
+        deploy(r, c)?;
+        match c.name {
+            "recover" => auth::template(r)?,
+            // A brand-new Pi has no passkey yet: setup is open, so just say where to go.
+            "portal" if auth::is_fresh(r) => eprintln!("\nNo passkey yet. Open https://{}/setup and create yours.", https::host()),
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
+/// A fresh Pi from nothing: the hub's own services, then the two plugins the Settings pages are made of. Everything else is
+/// installed from the Packages page (it needs the Packages plugin to exist, which is why this one is built here).
+/// The plugins come from a local checkout of the plugin repository: OSNT_PLUGINS_REPO (default ../osnt-plugins).
+fn bootstrap(r: &Remote) -> Result<(), String> {
+    let repo = env::var("OSNT_PLUGINS_REPO").unwrap_or_else(|_| "../osnt-plugins".into());
+    for core in ["packages", "credentials"] {
+        let dir = format!("{repo}/plugins/{core}");
+        if !std::path::Path::new(&dir).join("plugin.toml").exists() {
+            return Err(format!("{dir}/plugin.toml not found; set OSNT_PLUGINS_REPO to your osnt-plugins checkout"));
+        }
+    }
+    let all: Vec<&Component> = COMPONENTS.iter().collect();
+    deploy_all(r, &all)?;
+    for core in ["packages", "credentials"] {
+        eprintln!("==> bootstrap: installing the {core} plugin");
+        plugin::run(r, &["add".to_string(), format!("{repo}/plugins/{core}"), "--yes".to_string()])?;
+    }
+    eprintln!(
+        "\nDone. Next: open https://{}/setup (first time) or /login, create your passkey, then Settings > Packages:\n  add your plugin repository, Connect GitHub if it is private, and install what you want.",
+        https::host()
+    );
+    Ok(())
 }
 
 fn main() -> ExitCode {
