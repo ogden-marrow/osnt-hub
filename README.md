@@ -20,7 +20,6 @@ repository: [osnt-plugins](https://github.com/ogden-marrow/osnt-plugins).
 rustup target add aarch64-unknown-linux-musl   # once
 cargo run -p osnt-portal                       # local dev on :8080
 cargo deploy                                   # build and deploy the core to the Pi
-cargo deploy token                             # print the Credentials plugin admin token
 cargo deploy auth reset|template               # remove all passkeys (re-opens setup) / SD-card reset file
 cargo deploy https init|renew|ca               # your own CA and the Pi's HTTPS certificate (see below)
 

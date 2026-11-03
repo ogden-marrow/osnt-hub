@@ -14,6 +14,7 @@ Environment=OSNT_HTTP_BIND=0.0.0.0:80
 Environment=OSNT_PUBLIC_HOST=osnt-pi.local
 LoadCredential=tls.crt:/etc/osnt/tls/tls.crt
 LoadCredential=tls.key:/etc/osnt/tls/tls.key
+LoadCredential=gateway.key:/etc/osnt/gateway.key
 AmbientCapabilities=CAP_NET_BIND_SERVICE
 CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 Restart=on-failure

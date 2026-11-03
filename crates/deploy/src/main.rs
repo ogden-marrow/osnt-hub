@@ -7,11 +7,11 @@
 //!   cargo deploy repo add <github-repo-url> | list | remove <url>   (plugin repositories)
 //!   cargo deploy https init | renew | ca   your own CA + the Pi's HTTPS certificate
 //!   cargo deploy auth reset | template     remove all passkeys (re-opens setup) / place the SD-card reset file
-//!   cargo deploy token               print the Credentials plugin admin token
 //!
 //! Environment: OSNT_DEPLOY_HOST (default osnt@osnt-pi.local), OSNT_SSH_KEY (default ~/.ssh/osnt_pi_ed25519).
 
 mod auth;
+mod gateway;
 mod https;
 mod plugin;
 
@@ -80,10 +80,13 @@ impl Remote {
     /// Each plugin gets a private token in a root-only env file; only its SHA-256 goes into the (world-readable)
     /// manifest, so the portal can tell plugins apart and hand each one only the secrets it declares.
     fn ensure_token_hash(&self, id: &str) -> Result<String, String> {
+        let gateway_key = gateway::derived_key(id)?;
         self.ssh_out(&format!(
             "set -e; sudo mkdir -p /etc/osnt/tokens && sudo chmod 700 /etc/osnt/tokens; f=/etc/osnt/tokens/{id}.env; \
-             if ! sudo test -f $f; then t=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \\n'); echo \"OSNT_PLUGIN_TOKEN=$t\" | sudo tee $f >/dev/null; sudo chmod 600 $f; fi; \
-             sudo sed -n 's/^OSNT_PLUGIN_TOKEN=//p' $f | tr -d '\\n' | sha256sum | cut -d' ' -f1"
+             t=$(sudo sed -n 's/^OSNT_PLUGIN_TOKEN=//p' $f 2>/dev/null | tr -d '\\n'); \
+             if [ -z \"$t\" ]; then t=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \\n'); fi; \
+             printf 'OSNT_PLUGIN_TOKEN=%s\\nOSNT_GATEWAY_KEY=%s\\n' \"$t\" '{gateway_key}' | sudo tee $f >/dev/null; sudo chmod 600 $f; \
+             printf '%s' \"$t\" | sha256sum | cut -d' ' -f1"
         ))
     }
 
@@ -124,6 +127,7 @@ fn deploy(r: &Remote, c: &Component) -> Result<(), String> {
         let host = https::host();
         let created = https::ensure(&host, false)?;
         https::push(r, &host)?;
+        gateway::push(r)?;
         if created {
             https::trust_help();
         }
@@ -155,10 +159,6 @@ fn run(r: &Remote, args: &[String]) -> Result<(), String> {
         Some("https") => https::run(r, &args[1..]),
         Some("auth") => auth::run(r, &args[1..]),
         Some("repo") => plugin::repo(&args[1..]),
-        Some("token") => {
-            println!("{}", r.ssh_out("sudo cat /var/lib/osnt-credentials/admin-token")?);
-            Ok(())
-        }
         Some(verb @ ("status" | "logs")) => {
             let units: Vec<&str> = match args.get(1) {
                 Some(name) => vec![find(name)?.bin],

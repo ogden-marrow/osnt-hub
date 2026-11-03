@@ -1,4 +1,5 @@
 mod auth;
+mod gateway;
 mod tls;
 
 use std::{env, net::SocketAddr, path::PathBuf, time::Duration};
@@ -374,6 +375,14 @@ async fn proxy(req: Request) -> Response {
     // Browsers may arrive over HTTP/2; plugins speak HTTP/1.1 on loopback.
     head.version = axum::http::Version::HTTP_11;
     head.headers.remove(header::HOST);
+    // Vouch for the signed-in user to the plugin (it only trusts requests that carry a valid signature) and never
+    // let a client-supplied value through.
+    head.headers.remove("x-osnt-gateway");
+    if let Some(sig) = gateway::sign(id, head.method.as_str(), &format!("/{rest}{query}")) {
+        if let Ok(v) = axum::http::HeaderValue::from_str(&sig) {
+            head.headers.insert("x-osnt-gateway", v);
+        }
+    }
     let req = Request::from_parts(head, body);
 
     let client: Client<_, Body> = Client::builder(TokioExecutor::new()).build_http();

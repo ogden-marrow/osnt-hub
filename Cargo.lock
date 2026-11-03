@@ -999,8 +999,10 @@ checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
 name = "osnt-deploy"
 version = "0.1.0"
 dependencies = [
+ "hmac",
  "rcgen",
  "serde",
+ "sha2 0.10.9",
  "time",
  "toml",
 ]
@@ -1012,6 +1014,7 @@ dependencies = [
  "axum",
  "base64",
  "ciborium",
+ "hmac",
  "hyper-util",
  "mime_guess",
  "p256",

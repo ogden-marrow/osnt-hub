@@ -350,7 +350,7 @@ fn creation_options(s: &mut Store, name: &str, challenge: &str, ceremony: &str) 
         "user": { "id": s.user_id, "name": name, "displayName": name },
         "challenge": challenge,
         "pubKeyCredParams": [ { "type": "public-key", "alg": -7 } ],
-        "authenticatorSelection": { "residentKey": "required", "requireResidentKey": true, "userVerification": "required" },
+        "authenticatorSelection": { "residentKey": "preferred", "requireResidentKey": false, "userVerification": "required" },
         "attestation": "none", "timeout": 120000,
         "excludeCredentials": s.credentials.iter().map(|c| json!({ "type": "public-key", "id": c.id })).collect::<Vec<_>>(),
     }})

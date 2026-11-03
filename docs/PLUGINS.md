@@ -7,6 +7,10 @@ Plugins live in a separate repository (see the `osnt-plugins` repository); this 
 - **Mounting.** `GET /p/<id>/...` is reverse-proxied to `127.0.0.1:<port>/...`. Paths starting with `internal/` are never proxied.
 - **Launcher.** Each plugin becomes a card in its `grid`, shown as `live` when its port accepts connections and `offline` otherwise.
 - **Agent API.** `GET /api/agent/tools` merges each plugin's `GET /tools`; `POST /api/agent/call {tool, args}` runs a GET tool.
+- **Signed-in user.** The portal is the only place users sign in (passkeys). It adds `X-OSNT-Gateway: v1.<time>.<hmac>` to every
+  proxied request, signed with a key derived for that plugin only (`OSNT_GATEWAY_KEY`, from a master key that lives on
+  your computer and the portal). Plugins that need to know a user is signed in verify it (`osnt_common::gateway_authorized`)
+  instead of running their own login; they cannot forge requests to other plugins.
 - **Secrets.** The Credentials plugin stores keys. A plugin reads one with its own token (`OSNT_PLUGIN_TOKEN`, loaded from a
   root-only file by its systemd unit) and only for names declared in its manifest.
 - **Shared UI kit.** `/static/leaflet/*` and `/static/osnt-map.js` (layer catalog from `crates/portal/layers.toml`).

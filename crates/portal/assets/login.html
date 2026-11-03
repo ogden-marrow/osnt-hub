@@ -45,7 +45,7 @@
           authenticatorData: b64u.enc(r.authenticatorData), clientDataJSON: b64u.enc(r.clientDataJSON), signature: b64u.enc(r.signature) } });
         if (!fin.ok) throw new Error((await fin.json()).error);
         location.href = next();
-      } catch (e) { $('msg').textContent = e.name === 'NotAllowedError' ? 'Cancelled or timed out. Try again.' : e.message; }
+      } catch (e) { $('msg').innerHTML = (e.name === 'NotAllowedError' ? 'The browser did not complete the passkey step (you cancelled, it timed out, or this device cannot do it). ' : '') + '<br><small>Details: ' + (e.name || 'Error') + ': ' + (e.message || '').replace(/[<>&]/g, '') + '</small>'; }
       $('go').disabled = false;
     }
     $('go').onclick = signIn;
