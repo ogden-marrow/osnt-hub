@@ -1,6 +1,15 @@
-# Launcher catalog: grids of tool cards on the home page.
-# status = "live" (clickable, needs href) | "planned" (shown dimmed).
-# Override at runtime with OSNT_TOOLS=/path/to/tools.toml (re-read on every request).
+# Launcher catalog: grids of tool cards on the home page, in this order.
+# Installed plugins add their own cards (from plugin.toml: name, description, grid) and are marked live or not running.
+# A card listed here with no matching plugin is shown dimmed as "Planned" (status = "planned", the default);
+# a plugin card with the same name replaces it. Empty grids are hidden on the page, so this file only fixes the
+# ORDER of the groups. Override at runtime with OSNT_TOOLS=/path/to/tools.toml (re-read on every request).
+#
+#   [[grid.tool]]
+#   name = "Something not built yet"
+#   description = "One sentence."
+
+[[grid]]
+name = "Investigation"
 
 [[grid]]
 name = "Geospatial"
@@ -8,13 +17,26 @@ name = "Geospatial"
 [[grid]]
 name = "Air & Sea"
 
-[[grid.tool]]
-name = "Vessels (AIS)"
-description = "Ship positions and voyages from AIS feeds."
-
 [[grid]]
 name = "Network & Infrastructure"
 
-[[grid.tool]]
-name = "Internet-exposed hosts"
-description = "Open ports and banners from public scan datasets."
+[[grid]]
+name = "Threat Intel"
+
+[[grid]]
+name = "Organisations"
+
+[[grid]]
+name = "Events & News"
+
+[[grid]]
+name = "Hazards"
+
+[[grid]]
+name = "Media & Verification"
+
+[[grid]]
+name = "Tools"
+
+[[grid]]
+name = "System"

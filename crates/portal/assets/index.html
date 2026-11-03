@@ -8,23 +8,42 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%230c7a62%27 stroke-width=%272.2%27%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%279%27/%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%273.2%27 fill=%27%230c7a62%27 stroke=%27none%27/%3E%3C/svg%3E">
   <link rel="stylesheet" href="/static/osnt-ui.css">
   <style>
-    .tools { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
-    .tool { display: flex; flex-direction: column; gap: 6px; min-height: 96px; padding: 14px 16px; }
-    .tool-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-    .tool h3 { margin: 0; font-size: 15px; font-weight: 650; line-height: 1.3; }
-    .tool p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--ink-2); }
-    .tool .go { margin-top: auto; padding-top: 4px; font-size: 13px; font-weight: 600; color: var(--accent); }
+    .tools { display: grid; grid-template-columns: repeat(auto-fill, minmax(236px, 1fr)); gap: 10px; }
+    .cardwrap { position: relative; min-width: 0; }
+    .tool { display: flex; flex-direction: column; gap: 4px; height: 100%; min-height: 84px; padding: 12px 40px 12px 14px; }
+    .tool h3 { margin: 0; font-size: 14px; font-weight: 650; line-height: 1.3; display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .tool h3 span.t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tool p { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .tool.live { border-left: 3px solid var(--accent); }
-    a.tool.live:hover .go { text-decoration: underline; }
+    .tool.offline { border-left: 3px solid var(--warn); background: transparent; }
     .tool.planned { background: transparent; border-style: dashed; }
-    .tool.planned h3, .tool.planned p { color: var(--ink-3); }
-    .tool.offline { border-left: 3px solid var(--warn); }
-    .search { position: relative; width: min(320px, 100%); }
-    .search input { width: 100%; padding-right: 34px; }
+    .tool.offline h3, .tool.planned h3, .tool.offline p, .tool.planned p { color: var(--ink-3); }
+    .tool .note { margin-top: auto; font-size: 12px; color: var(--warn); font-weight: 600; }
+    .tool .note.planned { color: var(--ink-3); }
+    .star { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; display: grid; place-items: center; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--ink-3); cursor: pointer; padding: 0; }
+    .star svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+    .star:hover { background: var(--surface-2); color: var(--ink); }
+    .star[aria-pressed="true"] { color: var(--warn); }
+    .star[aria-pressed="true"] svg { fill: currentColor; }
+    .star:not([aria-pressed="true"]) { opacity: 0; }
+    .cardwrap:hover .star, .cardwrap:focus-within .star, .star:focus-visible { opacity: 1; }
+    @media (hover: none) { .star:not([aria-pressed="true"]) { opacity: .7; } }
+    .grp { margin-top: 18px; }
+    .grp-head { display: flex; align-items: center; gap: 8px; width: 100%; margin: 0 0 8px; padding: 4px 6px; margin-left: -6px; border: 0; background: none; color: var(--ink-2); font: 600 var(--fs-sm)/1.3 var(--font); cursor: pointer; text-align: left; border-radius: var(--radius-sm); }
+    .grp-head:hover { background: var(--surface-2); color: var(--ink); }
+    .grp-head .chev { width: 14px; height: 14px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; transition: transform var(--t-fast) var(--ease); }
+    .grp-head[aria-expanded="false"] .chev { transform: rotate(-90deg); }
+    .grp-head .count { font-weight: 500; color: var(--ink-3); font-size: var(--fs-xs); }
+    .grp-head .count b { color: var(--ok); font-weight: 600; }
+    .grp-body[hidden] { display: none !important; }
+    .search { position: relative; width: min(340px, 100%); }
+    .search input { width: 100%; padding-right: 40px; }
     .search kbd { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); pointer-events: none; }
     .search input:not(:placeholder-shown) ~ kbd, .search input:focus ~ kbd { display: none; }
-    .tool-skel { height: 96px; }
-    @media (max-width: 640px) { .search kbd { display: none; } .search { width: 100%; } }
+    .tool-skel { height: 84px; }
+    .tools-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: -8px 0 4px; }
+    .tools-bar .seg button { min-height: 28px; }
+    @media (max-width: 640px) { .search kbd { display: none; } .search { width: 100%; } .tools { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -38,7 +57,7 @@
     <div class="bar-end"><span id="status" class="status" role="status" aria-live="polite">Loading…</span><a class="btn sm ghost" href="/settings">Settings</a></div>
   </header>
 
-  <main class="page">
+  <main class="page wide">
     <div class="page-head">
       <div>
         <h1>Tools</h1>
@@ -50,89 +69,173 @@
         <kbd aria-hidden="true">/</kbd>
       </div>
     </div>
+    <div class="tools-bar" id="bar" hidden>
+      <span class="small muted" id="hint">Star a tool to pin it to the top. Press <kbd>/</kbd> to search.</span>
+      <div class="seg" role="group" aria-label="Groups">
+        <button type="button" id="expand">Expand all</button><button type="button" id="collapse">Collapse all</button>
+      </div>
+    </div>
     <div id="grids" aria-live="polite" aria-busy="true">
-      <div class="tools"><div class="skeleton tool-skel"></div><div class="skeleton tool-skel"></div><div class="skeleton tool-skel"></div></div>
+      <div class="tools"><div class="skeleton tool-skel"></div><div class="skeleton tool-skel"></div><div class="skeleton tool-skel"></div><div class="skeleton tool-skel"></div></div>
     </div>
   </main>
 
   <script>
-    (async () => {
-      const root = document.getElementById('grids'), status = document.getElementById('status'),
+    (() => {
+      const root = document.getElementById('grids'), status = document.getElementById('status'), bar = document.getElementById('bar'),
             filter = document.getElementById('filter'), summary = document.getElementById('summary');
-      let cfg, sections = [];
+      const RECENT_MAX = 6;
 
-      function fail(msg, retry = true) {
-        status.textContent = 'Offline';
-        root.setAttribute('aria-busy', 'false');
-        root.innerHTML = '';
-        const s = document.createElement('div'); s.className = 'state error'; s.setAttribute('role', 'alert');
-        s.innerHTML = '<div class="h3">Could not load the tool list</div><p></p>';
-        s.querySelector('p').textContent = msg;
-        if (retry) { const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Try again'; b.onclick = () => location.reload(); s.append(b); }
+      // Per-browser conveniences (favourites, recently used, collapsed groups). Storage may be blocked: every access is guarded.
+      const store = {
+        get(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d; } catch { return d; } },
+        set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+      };
+      let favs = new Set(store.get('osnt.favs', []).filter(x => typeof x === 'string'));
+      let recent = store.get('osnt.recent', []).filter(x => typeof x === 'string').slice(0, RECENT_MAX);
+      let collapsed = new Set(store.get('osnt.collapsed', []).filter(x => typeof x === 'string'));
+
+      let cfg = null, loadedOnce = false, lastSig = '';
+      const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+      const idOf = t => t.href || ('planned:' + t.name);
+      const STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9 6.8 19.7l1-5.9-4.3-4.1 5.9-.8z"/></svg>';
+      const CHEV = '<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+      function fail(msg) {
+        status.textContent = 'Offline'; root.setAttribute('aria-busy', 'false'); root.innerHTML = ''; bar.hidden = true;
+        const s = el('div', 'state error'); s.setAttribute('role', 'alert');
+        s.append(el('div', 'h3', 'Could not load the tool list'), el('p', '', msg));
+        const b = el('button', 'btn', 'Try again'); b.onclick = () => load(); s.append(b);
         root.append(s);
       }
 
-      try {
-        const r = await fetch('/api/tools');
-        if (r.status === 401) { location.href = '/login'; return; }
-        if (!r.ok) throw new Error('The hub answered ' + r.status + '.');
-        cfg = await r.json();
-      } catch (e) { fail(e && e.message && !/fetch|JSON/i.test(e.message) ? e.message : 'The hub did not respond. Check that it is running and reachable.'); return; }
-
-      let live = 0, total = 0;
-      root.innerHTML = '';
-      for (const grid of cfg.grid || []) {
-        const sec = document.createElement('section');
-        const h = document.createElement('h2'); h.className = 'group-label'; h.textContent = grid.name;
-        const g = document.createElement('div'); g.className = 'tools';
-        const cards = [];
-        for (const t of grid.tool || []) {
-          total++;
-          const isLive = t.status === 'live' && t.href;
-          const card = document.createElement(isLive ? 'a' : 'div');
-          card.className = 'card tool ' + (isLive ? 'tile live' : (t.status === 'offline' ? 'offline' : 'planned'));
-          if (isLive) { card.href = t.href; live++; }
-          const head = document.createElement('div'); head.className = 'tool-head';
-          const title = document.createElement('h3'); title.textContent = t.name;
-          const badge = document.createElement('span');
-          badge.className = 'badge ' + (isLive ? 'ok live' : (t.status === 'offline' ? 'warn' : ''));
-          badge.textContent = isLive ? 'Live' : (t.status === 'offline' ? 'Offline' : 'Planned');
-          head.append(title, badge);
-          const p = document.createElement('p'); p.textContent = t.description || '';
-          card.append(head, p);
-          if (isLive) { const go = document.createElement('span'); go.className = 'go'; go.textContent = 'Open →'; card.append(go); }
-          card.dataset.q = (t.name + ' ' + (t.description || '')).toLowerCase();
-          g.append(card); cards.push(card);
+      function card(t, extra) {
+        const live = t.status === 'live' && t.href, off = t.status === 'offline';
+        const wrap = el('div', 'cardwrap'); wrap.dataset.id = idOf(t);
+        const c = el(live ? 'a' : 'div', 'card tool ' + (live ? 'tile live' : off ? 'offline' : 'planned'));
+        if (live) { c.href = t.href; c.addEventListener('click', () => noteRecent(idOf(t))); }
+        const h = el('h3'); h.append(el('span', 't', t.name));
+        if (live) { const d = el('span', 'dot ok'); d.title = 'Running'; d.setAttribute('role', 'img'); d.setAttribute('aria-label', 'Running'); h.append(d); }
+        c.append(h, el('p', '', t.description || ''));
+        if (off) c.append(el('span', 'note', 'Not running'));
+        else if (!live) c.append(el('span', 'note planned', 'Planned'));
+        c.dataset.q = (t.name + ' ' + (t.description || '')).toLowerCase();
+        c.title = off ? 'This plugin is installed but not answering. Check its service on the hub.' : (t.description || '');
+        wrap.append(c);
+        if (t.href) {
+          const id = idOf(t), on = favs.has(id);
+          const s = el('button', 'star'); s.type = 'button'; s.innerHTML = STAR;
+          s.setAttribute('aria-pressed', String(on)); s.setAttribute('aria-label', (on ? 'Remove from favourites: ' : 'Add to favourites: ') + t.name); s.title = on ? 'Unpin from favourites' : 'Pin to favourites';
+          s.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); toggleFav(id); });
+          wrap.append(s);
         }
-        if (!cards.length) {
-          const e = document.createElement('div'); e.className = 'state'; e.innerHTML = '<p>No tools here yet.</p>'; g.append(e);
-          g.style.display = 'block';
-        }
-        sec.append(h, g); root.append(sec); sections.push({ sec, cards, empty: !cards.length });
+        return wrap;
       }
-      if (!sections.length) {
-        root.innerHTML = '<div class="state"><div class="h3">No tools configured</div><p>Add tool grids to tools.toml on the hub and reload.</p></div>';
-      }
-      root.setAttribute('aria-busy', 'false');
-      status.textContent = `${live} live of ${total}`;
-      summary.textContent = `${live} tool${live === 1 ? ' is' : 's are'} live on this hub${total > live ? `, ${total - live} planned` : ''}.`;
-      filter.disabled = false;
 
-      const none = document.createElement('div'); none.className = 'state'; none.hidden = true;
-      none.innerHTML = '<div class="h3">No tools match</div><p></p>'; root.append(none);
-      filter.addEventListener('input', () => {
+      function noteRecent(id) { recent = [id, ...recent.filter(x => x !== id)].slice(0, RECENT_MAX); store.set('osnt.recent', recent); }
+      function toggleFav(id) {
+        const had = document.activeElement?.closest?.('.cardwrap') ? id : null;
+        favs.has(id) ? favs.delete(id) : favs.add(id); store.set('osnt.favs', [...favs]); render();
+        if (had) { const b = [...document.querySelectorAll('.star')].find(s => s.closest('.cardwrap').querySelector('a')?.getAttribute('href') === id); b?.focus(); }
+      }
+
+      function section(key, title, tools, opts = {}) {
+        const sec = el('section', 'grp'); sec.dataset.key = key;
+        const open = !collapsed.has(key);
+        const hb = el('button', 'grp-head'); hb.type = 'button'; hb.setAttribute('aria-expanded', String(open)); hb.id = 'gh-' + key.replace(/\W+/g, '_');
+        const live = tools.filter(t => t.status === 'live').length;
+        hb.innerHTML = CHEV; hb.append(el('span', '', title));
+        const cnt = el('span', 'count'); cnt.innerHTML = opts.noCount ? '' : `${tools.length}${live < tools.length ? ` · <b>${live}</b> running` : ''}`; hb.append(cnt);
+        const body = el('div', 'grp-body tools'); body.setAttribute('role', 'group'); body.setAttribute('aria-labelledby', hb.id); body.hidden = !open;
+        const cards = tools.map(t => card(t)); body.append(...cards);
+        hb.onclick = () => { if (filter.value.trim()) return; const now = hb.getAttribute('aria-expanded') !== 'true'; hb.setAttribute('aria-expanded', String(now)); body.hidden = !now; now ? collapsed.delete(key) : collapsed.add(key); store.set('osnt.collapsed', [...collapsed]); };
+        sec.append(hb, body);
+        return { sec, cards, hb, body };
+      }
+
+      let sections = [];
+      function render() {
+        root.innerHTML = ''; sections = [];
+        const all = (cfg.grid || []).flatMap(g => (g.tool || []).map(t => ({ ...t, group: g.name })));
+        const byId = new Map(all.filter(t => t.href).map(t => [idOf(t), t]));
+        // Stale ids (a plugin was removed) simply drop out.
+        const favTools = [...favs].map(i => byId.get(i)).filter(Boolean);
+        const recTools = recent.map(i => byId.get(i)).filter(t => t && !favs.has(idOf(t)));
+        if (favTools.length) sections.push(section('~fav', 'Favourites', favTools, { noCount: true }));
+        if (recTools.length) sections.push(section('~recent', 'Recently used', recTools, { noCount: true }));
+        for (const g of cfg.grid || []) {
+          if (!(g.tool || []).length) continue; // a grid with nothing in it yet is not worth a heading
+          sections.push(section(g.name, g.name, g.tool));
+        }
+        if (!sections.length) {
+          root.innerHTML = '<div class="state"><div class="h3">No tools configured</div><p>Install plugins from Settings, Packages, or add tool grids to tools.toml on the hub.</p></div>';
+          bar.hidden = true;
+        } else { bar.hidden = false; root.append(...sections.map(s => s.sec)); }
+        const none = el('div', 'state'); none.id = 'none'; none.hidden = true; none.append(el('div', 'h3', 'No tools match'), el('p')); root.append(none);
+        root.setAttribute('aria-busy', 'false');
+        const total = all.length, live = all.filter(t => t.status === 'live' && t.href).length, off = all.filter(t => t.status === 'offline').length, planned = total - live - off;
+        status.textContent = off ? `${live} running · ${off} not running` : `${live} running`;
+        summary.textContent = `${live} tool${live === 1 ? ' is' : 's are'} running on this hub` + (off ? `, ${off} installed but not responding` : '') + (planned ? `, ${planned} planned` : '') + '.';
+        applyFilter();
+      }
+
+      function applyFilter() {
         const q = filter.value.trim().toLowerCase(); let shown = 0;
         for (const s of sections) {
           let any = 0;
-          for (const c of s.cards) { const m = !q || c.dataset.q.includes(q); c.hidden = !m; if (m) any++; }
-          s.sec.hidden = q ? !any : false; shown += any;
+          for (const c of s.cards) { const m = !q || c.firstChild.dataset.q.includes(q); c.hidden = !m; if (m) any++; }
+          s.sec.hidden = !!q && !any; shown += any;
+          // While searching, every group with a hit is shown open, without touching the saved collapse state.
+          if (q) { s.body.hidden = !any; } else { s.body.hidden = s.hb.getAttribute('aria-expanded') !== 'true'; }
         }
-        none.hidden = !q || shown > 0; none.querySelector('p').textContent = `Nothing matches “${filter.value.trim()}”.`;
+        const none = document.getElementById('none');
+        if (none) { none.hidden = !q || shown > 0; none.querySelector('p').textContent = `Nothing matches “${filter.value.trim()}”. Try a shorter word, such as a place, a data source or a kind of record.`; }
+      }
+
+      async function load() {
+        root.setAttribute('aria-busy', 'true');
+        try {
+          const r = await fetch('/api/tools');
+          if (r.status === 401) { location.href = '/login'; return; }
+          if (!r.ok) throw new Error('The hub answered ' + r.status + '.');
+          const next = await r.json(), sig = JSON.stringify(next);
+          if (loadedOnce && sig === lastSig) { root.setAttribute('aria-busy', 'false'); return; }
+          cfg = next; lastSig = sig;
+        } catch (e) { if (loadedOnce) return; /* keep the last good list on screen during a background refresh */ fail(e && e.message && !/fetch|JSON|Load failed/i.test(e.message) ? e.message : 'The hub did not respond. Check that it is running and reachable.'); return; }
+        loadedOnce = true; render(); filter.disabled = false;
+      }
+
+      filter.addEventListener('input', applyFilter);
+      filter.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { const a = visibleCards().find(c => c.firstChild.tagName === 'A'); if (a) { noteRecent(idOf({ href: a.firstChild.getAttribute('href') })); location.href = a.firstChild.href; } }
+        if (e.key === 'ArrowDown') { e.preventDefault(); visibleCards()[0]?.firstChild.focus(); }
       });
+      document.getElementById('expand').onclick = () => { collapsed.clear(); store.set('osnt.collapsed', []); render(); };
+      document.getElementById('collapse').onclick = () => { collapsed = new Set(sections.map(s => s.sec.dataset.key)); store.set('osnt.collapsed', [...collapsed]); render(); };
+
+      const visibleCards = () => sections.flatMap(s => s.sec.hidden || s.body.hidden ? [] : s.cards.filter(c => !c.hidden));
       document.addEventListener('keydown', e => {
-        if (e.key === '/' && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName) && !e.metaKey && !e.ctrlKey) { e.preventDefault(); filter.focus(); }
-        if (e.key === 'Escape' && document.activeElement === filter) { filter.value = ''; filter.dispatchEvent(new Event('input')); filter.blur(); }
+        const tag = document.activeElement?.tagName;
+        const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(tag);
+        if ((e.key === '/' && !typing && !e.metaKey && !e.ctrlKey && !e.altKey) || ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k')) { e.preventDefault(); filter.focus(); filter.select(); return; }
+        if (e.key === 'Escape' && document.activeElement === filter) { filter.value = ''; applyFilter(); filter.blur(); return; }
+        // Arrow keys move between cards by position on screen.
+        const cur = document.activeElement?.closest?.('.cardwrap'); if (!cur || !['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+        const cards = visibleCards(); const i = cards.indexOf(cur); if (i < 0) return;
+        const r = cur.getBoundingClientRect(); let next = null;
+        if (e.key === 'ArrowRight') next = cards[i + 1]; else if (e.key === 'ArrowLeft') next = cards[i - 1];
+        else {
+          const dir = e.key === 'ArrowDown' ? 1 : -1; let best = Infinity;
+          for (const c of cards) { const b = c.getBoundingClientRect(); const dy = (b.top - r.top) * dir; if (dy < 8) continue; const score = dy * 4 + Math.abs(b.left - r.left); if (score < best) { best = score; next = c; } }
+          if (!next && dir < 0) { filter.focus(); e.preventDefault(); return; }
+        }
+        if (next) { e.preventDefault(); next.firstChild.focus(); next.scrollIntoView({ block: 'nearest' }); }
       });
+
+      load();
+      // Keep running/not-running current without a reload (the hub is cheap to ask).
+      setInterval(() => { if (!document.hidden && loadedOnce) load(); }, 30000);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden && loadedOnce) load(); });
     })();
   </script>
 </body>
