@@ -216,8 +216,8 @@ fn unit_for(p: &PluginToml) -> String {
 
 fn manifest_for(p: &PluginToml, token_hash: &str) -> String {
     let mut m = format!(
-        "token_sha256 = \"{token_hash}\"\nid = \"{}\"\nname = \"{}\"\ndescription = \"{}\"\ngrid = \"{}\"\nport = {}\n",
-        p.id, p.name, p.description, p.grid, p.port
+        "token_sha256 = \"{token_hash}\"\nid = \"{}\"\nname = \"{}\"\ndescription = \"{}\"\ngrid = \"{}\"\nport = {}\nversion = \"{}\"\n",
+        p.id, p.name, p.description, p.grid, p.port, p.version
     );
     for s in &p.secrets {
         m.push_str(&format!("\n[[secret]]\nname = \"{}\"\nlabel = \"{}\"\nrequired = {}\n", s.name, s.label, s.required));
