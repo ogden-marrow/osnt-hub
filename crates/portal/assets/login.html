@@ -3,24 +3,34 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OSNT sign in</title>
+  <meta name="color-scheme" content="light dark">
+  <title>Sign in · OSNT</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%230c7a62%27 stroke-width=%272.2%27%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%279%27/%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%273.2%27 fill=%27%230c7a62%27 stroke=%27none%27/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/osnt-ui.css">
   <style>
-    :root { color-scheme: dark; }
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: system-ui, sans-serif; background: #0f1419; color: #e6e6e6; }
-    main { width: min(380px, 90vw); padding: 28px; border: 1px solid #243040; border-radius: 12px; background: #151c24; text-align: center; }
-    h1 { margin: 0 0 6px; font-size: 18px; letter-spacing: .1em; }
-    p { margin: 0 0 18px; font-size: 13px; color: #9fb0c0; line-height: 1.45; }
-    button { width: 100%; padding: 12px; font-size: 15px; background: #1d3a34; color: #e6e6e6; border: 1px solid #2f6f5e; border-radius: 8px; cursor: pointer; }
-    button:hover { border-color: #3fae91; } button:disabled { opacity: .6; cursor: wait; }
-    #msg { margin-top: 14px; min-height: 18px; font-size: 13px; color: #ef6c6c; }
+    body { display: grid; place-items: center; padding: 24px 16px; }
+    .auth { width: min(400px, 100%); }
+    .auth .mark { width: 40px; height: 40px; color: var(--accent); margin-bottom: 20px; }
+    .auth h1 { margin: 0 0 6px; font-size: 22px; font-weight: 650; letter-spacing: -.01em; }
+    .auth .lede { margin: 0 0 24px; color: var(--ink-2); }
+    .auth .card { padding: 24px; }
+    #msg { margin-top: 16px; font-size: 13px; line-height: 1.5; color: var(--ink); background: var(--err-soft); border-left: 3px solid var(--err); border-radius: var(--radius-sm); padding: 10px 12px; overflow-wrap: anywhere; }
+    #msg:empty { display: none; }
+    #msg small { display: block; color: var(--ink-2); font-size: 12px; margin-top: 4px; }
+    #msg br { display: none; }
+    .foot { margin: 16px 0 0; text-align: center; font-size: 12px; color: var(--ink-3); }
   </style>
 </head>
 <body>
-  <main>
-    <h1>OSNT</h1>
-    <p>Sign in with your passkey. There is no password.</p>
-    <button id="go">Sign in with passkey</button>
-    <div id="msg"></div>
+  <main class="auth">
+    <div class="card">
+      <svg class="mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/><path d="M12 3v4" stroke-linecap="round"/></svg>
+      <h1>Sign in to OSNT</h1>
+      <p class="lede">Use the passkey on this device or your security key. There is no password.</p>
+      <button id="go" class="btn primary lg block" autofocus>Sign in with passkey</button>
+      <div id="msg" role="alert" aria-live="assertive"></div>
+    </div>
+    <p class="foot">First time on this hub? Setup opens automatically.</p>
   </main>
   <script>
     const $ = id => document.getElementById(id);

@@ -3,55 +3,136 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OSNT Portal</title>
+  <meta name="color-scheme" content="light dark">
+  <title>OSNT Hub</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%230c7a62%27 stroke-width=%272.2%27%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%279%27/%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%273.2%27 fill=%27%230c7a62%27 stroke=%27none%27/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/osnt-ui.css">
   <style>
-    :root { color-scheme: dark; }
-    * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; font-family: system-ui, sans-serif; background: #0f1419; color: #e6e6e6; }
-    header { display: flex; align-items: baseline; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid #243040; }
-    header h1 { margin: 0; font-size: 16px; letter-spacing: .08em; }
-    #status { font-size: 12px; color: #8aa; }
-    main { max-width: 1100px; margin: 0 auto; padding: 8px 24px 48px; }
-    h2 { margin: 28px 0 10px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: #7f93a8; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
-    .card { display: block; padding: 16px; border: 1px solid #243040; border-radius: 8px; background: #151c24; color: inherit; text-decoration: none; min-height: 110px; }
-    .card h3 { margin: 0 0 6px; font-size: 15px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-    .card p { margin: 0; font-size: 13px; line-height: 1.4; color: #9fb0c0; }
-    .badge { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; padding: 2px 6px; border-radius: 999px; border: 1px solid #2d3a4a; color: #7f93a8; }
-    a.card.live { border-color: #2f6f5e; }
-    a.card.live:hover, a.card.live:focus-visible { background: #1a2a2a; border-color: #3fae91; outline: none; }
-    a.card.live .badge { color: #3fae91; border-color: #2f6f5e; }
-    div.card.planned { opacity: .55; cursor: default; }
+    .tools { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+    .tool { display: flex; flex-direction: column; gap: 6px; min-height: 96px; padding: 14px 16px; }
+    .tool-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .tool h3 { margin: 0; font-size: 15px; font-weight: 650; line-height: 1.3; }
+    .tool p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--ink-2); }
+    .tool .go { margin-top: auto; padding-top: 4px; font-size: 13px; font-weight: 600; color: var(--accent); }
+    .tool.live { border-left: 3px solid var(--accent); }
+    a.tool.live:hover .go { text-decoration: underline; }
+    .tool.planned { background: transparent; border-style: dashed; }
+    .tool.planned h3, .tool.planned p { color: var(--ink-3); }
+    .tool.offline { border-left: 3px solid var(--warn); }
+    .search { position: relative; width: min(320px, 100%); }
+    .search input { width: 100%; padding-right: 34px; }
+    .search kbd { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+    .search input:not(:placeholder-shown) ~ kbd, .search input:focus ~ kbd { display: none; }
+    .tool-skel { height: 96px; }
+    @media (max-width: 640px) { .search kbd { display: none; } .search { width: 100%; } }
   </style>
 </head>
 <body>
-  <header><h1>OSNT PORTAL</h1><span><a href="/settings" style="color:#8aa;font-size:12px;margin-right:14px;text-decoration:none">Settings</a><span id="status">loading…</span></span></header>
-  <main id="grids"></main>
+  <a class="skip" href="#grids">Skip to tools</a>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="OSNT hub home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/><path d="M12 3v4" stroke-linecap="round"/></svg>
+      OSNT
+    </a>
+    <span class="sep" aria-hidden="true">/</span><span class="muted">Hub</span>
+    <div class="bar-end"><span id="status" class="status" role="status" aria-live="polite">Loading…</span><a class="btn sm ghost" href="/settings">Settings</a></div>
+  </header>
+
+  <main class="page">
+    <div class="page-head">
+      <div>
+        <h1>Tools</h1>
+        <p id="summary">Open-source intelligence tools running on this hub.</p>
+      </div>
+      <div class="search">
+        <label class="sr-only" for="filter">Filter tools</label>
+        <input id="filter" type="search" placeholder="Filter tools" autocomplete="off" disabled>
+        <kbd aria-hidden="true">/</kbd>
+      </div>
+    </div>
+    <div id="grids" aria-live="polite" aria-busy="true">
+      <div class="tools"><div class="skeleton tool-skel"></div><div class="skeleton tool-skel"></div><div class="skeleton tool-skel"></div></div>
+    </div>
+  </main>
+
   <script>
     (async () => {
-      const root = document.getElementById('grids'), status = document.getElementById('status');
-      let cfg;
-      try { cfg = await (await fetch('/api/tools')).json(); }
-      catch { status.textContent = 'could not load tools'; return; }
-      let live = 0;
-      for (const grid of cfg.grid) {
-        const h = document.createElement('h2'); h.textContent = grid.name;
-        const g = document.createElement('div'); g.className = 'grid';
-        for (const t of grid.tool) {
+      const root = document.getElementById('grids'), status = document.getElementById('status'),
+            filter = document.getElementById('filter'), summary = document.getElementById('summary');
+      let cfg, sections = [];
+
+      function fail(msg, retry = true) {
+        status.textContent = 'Offline';
+        root.setAttribute('aria-busy', 'false');
+        root.innerHTML = '';
+        const s = document.createElement('div'); s.className = 'state error'; s.setAttribute('role', 'alert');
+        s.innerHTML = '<div class="h3">Could not load the tool list</div><p></p>';
+        s.querySelector('p').textContent = msg;
+        if (retry) { const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Try again'; b.onclick = () => location.reload(); s.append(b); }
+        root.append(s);
+      }
+
+      try {
+        const r = await fetch('/api/tools');
+        if (r.status === 401) { location.href = '/login'; return; }
+        if (!r.ok) throw new Error('The hub answered ' + r.status + '.');
+        cfg = await r.json();
+      } catch (e) { fail(e && e.message && !/fetch|JSON/i.test(e.message) ? e.message : 'The hub did not respond. Check that it is running and reachable.'); return; }
+
+      let live = 0, total = 0;
+      root.innerHTML = '';
+      for (const grid of cfg.grid || []) {
+        const sec = document.createElement('section');
+        const h = document.createElement('h2'); h.className = 'group-label'; h.textContent = grid.name;
+        const g = document.createElement('div'); g.className = 'tools';
+        const cards = [];
+        for (const t of grid.tool || []) {
+          total++;
           const isLive = t.status === 'live' && t.href;
           const card = document.createElement(isLive ? 'a' : 'div');
-          card.className = `card ${isLive ? 'live' : 'planned'}`;
+          card.className = 'card tool ' + (isLive ? 'tile live' : (t.status === 'offline' ? 'offline' : 'planned'));
           if (isLive) { card.href = t.href; live++; }
-          const title = document.createElement('h3');
-          title.append(t.name);
-          const badge = document.createElement('span'); badge.className = 'badge'; badge.textContent = isLive ? 'open' : (t.status === 'offline' ? 'offline' : 'planned');
-          title.append(badge);
-          const p = document.createElement('p'); p.textContent = t.description;
-          card.append(title, p); g.append(card);
+          const head = document.createElement('div'); head.className = 'tool-head';
+          const title = document.createElement('h3'); title.textContent = t.name;
+          const badge = document.createElement('span');
+          badge.className = 'badge ' + (isLive ? 'ok live' : (t.status === 'offline' ? 'warn' : ''));
+          badge.textContent = isLive ? 'Live' : (t.status === 'offline' ? 'Offline' : 'Planned');
+          head.append(title, badge);
+          const p = document.createElement('p'); p.textContent = t.description || '';
+          card.append(head, p);
+          if (isLive) { const go = document.createElement('span'); go.className = 'go'; go.textContent = 'Open →'; card.append(go); }
+          card.dataset.q = (t.name + ' ' + (t.description || '')).toLowerCase();
+          g.append(card); cards.push(card);
         }
-        root.append(h, g);
+        if (!cards.length) {
+          const e = document.createElement('div'); e.className = 'state'; e.innerHTML = '<p>No tools here yet.</p>'; g.append(e);
+          g.style.display = 'block';
+        }
+        sec.append(h, g); root.append(sec); sections.push({ sec, cards, empty: !cards.length });
       }
-      status.textContent = `${live} live tool${live === 1 ? '' : 's'}`;
+      if (!sections.length) {
+        root.innerHTML = '<div class="state"><div class="h3">No tools configured</div><p>Add tool grids to tools.toml on the hub and reload.</p></div>';
+      }
+      root.setAttribute('aria-busy', 'false');
+      status.textContent = `${live} live of ${total}`;
+      summary.textContent = `${live} tool${live === 1 ? ' is' : 's are'} live on this hub${total > live ? `, ${total - live} planned` : ''}.`;
+      filter.disabled = false;
+
+      const none = document.createElement('div'); none.className = 'state'; none.hidden = true;
+      none.innerHTML = '<div class="h3">No tools match</div><p></p>'; root.append(none);
+      filter.addEventListener('input', () => {
+        const q = filter.value.trim().toLowerCase(); let shown = 0;
+        for (const s of sections) {
+          let any = 0;
+          for (const c of s.cards) { const m = !q || c.dataset.q.includes(q); c.hidden = !m; if (m) any++; }
+          s.sec.hidden = q ? !any : false; shown += any;
+        }
+        none.hidden = !q || shown > 0; none.querySelector('p').textContent = `Nothing matches “${filter.value.trim()}”.`;
+      });
+      document.addEventListener('keydown', e => {
+        if (e.key === '/' && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName) && !e.metaKey && !e.ctrlKey) { e.preventDefault(); filter.focus(); }
+        if (e.key === 'Escape' && document.activeElement === filter) { filter.value = ''; filter.dispatchEvent(new Event('input')); filter.blur(); }
+      });
     })();
   </script>
 </body>

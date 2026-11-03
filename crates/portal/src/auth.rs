@@ -497,7 +497,8 @@ pub async fn logout(headers: HeaderMap) -> Response {
 /// Everything except the sign-in pages and /auth/* requires a valid session.
 pub async fn gate(req: Request, next: Next) -> Response {
     let path = req.uri().path();
-    if path == "/login" || path == "/setup" || path.starts_with("/auth/") || logged_in(req.headers()) {
+    // /static/osnt-ui.css is public: the sign-in and setup pages need it before a session exists.
+    if path == "/login" || path == "/setup" || path == "/static/osnt-ui.css" || path.starts_with("/auth/") || logged_in(req.headers()) {
         return next.run(req).await;
     }
     let wants_html = req.method() == Method::GET && req.headers().get(header::ACCEPT).and_then(|v| v.to_str().ok()).is_some_and(|a| a.contains("text/html"));

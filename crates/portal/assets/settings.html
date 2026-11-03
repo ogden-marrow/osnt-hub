@@ -3,38 +3,59 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OSNT Settings</title>
+  <meta name="color-scheme" content="light dark">
+  <title>Settings · OSNT</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%230c7a62%27 stroke-width=%272.2%27%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%279%27/%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%273.2%27 fill=%27%230c7a62%27 stroke=%27none%27/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/osnt-ui.css">
   <style>
-    :root { color-scheme: dark; }
-    html, body { height: 100%; }
-    body { margin: 0; display: flex; flex-direction: column; font-family: system-ui, sans-serif; background: #0f1419; color: #e6e6e6; }
-    header { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-bottom: 1px solid #243040; font-size: 16px; letter-spacing: .08em; }
-    header a, header button { color: #8aa; font-size: 12px; text-decoration: none; background: none; border: 0; cursor: pointer; letter-spacing: 0; }
-    header h1 { margin: 0; font-size: 16px; font-weight: 600; }
-    nav { display: flex; gap: 4px; padding: 8px 16px 0; border-bottom: 1px solid #243040; }
-    nav button { background: none; color: #9fb0c0; border: 1px solid transparent; border-bottom: 0; border-radius: 6px 6px 0 0; padding: 8px 16px; cursor: pointer; font-size: 14px; }
-    nav button[aria-selected="true"] { color: #e6e6e6; background: #151c24; border-color: #243040; }
-    iframe { flex: 1; width: 100%; border: 0; background: #0f1419; }
+    .panel { position: relative; flex: 1 1 auto; min-height: 0; background: var(--bg); }
+    iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--bg); color-scheme: normal; }
+    .panel .loading { position: absolute; left: var(--gutter); top: 24px; z-index: 0; }
+    .panel.ready .loading { display: none; }
   </style>
 </head>
-<body>
-  <header><h1><a href="/" style="font-size:16px;color:inherit">&larr; OSNT</a> / SETTINGS</h1><button id="out">Sign out</button></header>
-  <nav role="tablist">
-    <button role="tab" data-src="/p/credentials/" aria-selected="true">API keys</button>
-    <button role="tab" data-src="/p/packages/" aria-selected="false">Packages</button>
+<body class="fixed">
+  <a class="skip" href="#frame">Skip to settings content</a>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Back to OSNT hub">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/><path d="M12 3v4" stroke-linecap="round"/></svg>
+      OSNT
+    </a>
+    <span class="sep" aria-hidden="true">/</span>
+    <h1>Settings</h1>
+    <div class="bar-end"><button id="out" class="btn sm ghost">Sign out</button></div>
+  </header>
+  <nav class="tabs" role="tablist" aria-label="Settings sections">
+    <button class="tab" role="tab" id="tab-keys" aria-controls="frame" data-src="/p/credentials/" aria-selected="true" tabindex="0">API keys</button>
+    <button class="tab" role="tab" id="tab-pkgs" aria-controls="frame" data-src="/p/packages/" aria-selected="false" tabindex="-1">Packages</button>
   </nav>
-  <iframe id="frame" title="Settings"></iframe>
+  <div class="panel" id="panel">
+    <div class="loading"><span class="spin" aria-hidden="true"></span>Loading…</div>
+    <iframe id="frame" title="Settings content" role="tabpanel"></iframe>
+  </div>
   <script>
-    const frame = document.getElementById('frame');
+    const frame = document.getElementById('frame'), panel = document.getElementById('panel');
     const tabs = [...document.querySelectorAll('[role=tab]')];
     function show(tab) {
-      tabs.forEach(t => t.setAttribute('aria-selected', String(t === tab)));
+      tabs.forEach(t => { const on = t === tab; t.setAttribute('aria-selected', String(on)); t.tabIndex = on ? 0 : -1; });
+      frame.setAttribute('aria-labelledby', tab.id);
+      panel.classList.remove('ready');
       frame.src = tab.dataset.src;
       try { history.replaceState(null, '', '#' + tab.dataset.src.split('/')[2]); } catch {}
     }
     // Links inside a settings page (the "back to OSNT" link) should leave the frame, not nest the portal in it.
-    frame.onload = () => { try { const d = frame.contentDocument; if (!d.querySelector('base')) { const b = d.createElement('base'); b.target = '_top'; d.head.prepend(b); } } catch {} };
+    // Pages inside the frame also drop their own top bar: this shell already carries it.
+    frame.onload = () => {
+      panel.classList.add('ready');
+      try { const d = frame.contentDocument; d.documentElement.classList.add('embedded'); if (!d.querySelector('base')) { const b = d.createElement('base'); b.target = '_top'; d.head.prepend(b); } } catch {}
+    };
     tabs.forEach(t => t.onclick = () => show(t));
+    // Arrow keys move between tabs (roving tabindex); Home and End jump to the ends.
+    tabs.forEach((t, i) => t.addEventListener('keydown', e => {
+      const k = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+      if (k === undefined) return;
+      e.preventDefault(); const n = tabs[(k + tabs.length) % tabs.length]; n.focus(); show(n);
+    }));
     show(tabs.find(t => t.dataset.src.split('/')[2] === location.hash.slice(1)) || tabs[0]);
     document.getElementById('out').onclick = async () => { await fetch('/auth/logout', { method: 'POST' }); location.href = '/login'; };
   </script>
