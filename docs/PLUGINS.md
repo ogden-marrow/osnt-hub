@@ -13,9 +13,15 @@ Plugins live in a separate repository (see the `osnt-plugins` repository); this 
   instead of running their own login; they cannot forge requests to other plugins.
 - **Secrets.** The Credentials plugin stores keys. A plugin reads one with its own token (`OSNT_PLUGIN_TOKEN`, loaded from a
   root-only file by its systemd unit) and only for names declared in its manifest.
-- **Shared UI kit.** `/static/leaflet/*` and `/static/osnt-map.js` (layer catalog from `crates/portal/layers.toml`).
+- **Shared UI kit.** `/static/osnt-ui.css` (design system; add class `embedded` to `<html>` inside iframes), `/static/leaflet/*`
+  and `/static/osnt-map.js` (layer catalog from `crates/portal/layers.toml`).
+- **Deep links.** Pages read `?q=` (or `?lat&lon&zoom`, `?id=`) to pre-fill and run. `?pin=` on the case-notebook plugin opens a
+  confirmation to save the item to the case.
 - **Sandbox.** The installer generates each plugin's systemd unit: dynamic user, read-only filesystem, private /tmp,
   optional `StateDirectory=osnt-<id>`, loopback binding by convention. Plugins cannot set their own command line or privileges.
+- **System software.** A plugin may declare `[system]` with `apt = [...]` and `[[system.download]]` (`name`, `url`, optional
+  `sha256_url`; GitHub release URLs only). The Packages page shows exactly what will be installed and only installs what
+  the user approves; the root helper skips anything already present.
 - **Dependencies.** `requires` (plugin ids that must be installed first) and `provides` (API names) in `plugin.toml`.
 
-Installing and removing: `cargo deploy plugin add|remove|list|search`, `cargo deploy repo add|list|remove`.
+Installing and removing: Settings, Packages in the web UI (install, update, remove), or `cargo deploy plugin add|remove|list|search`, `cargo deploy repo add|list|remove`.
