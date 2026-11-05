@@ -6,12 +6,23 @@
   <meta name="color-scheme" content="light dark">
   <title>Settings · OSNT</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%230c7a62%27 stroke-width=%272.2%27%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%279%27/%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%273.2%27 fill=%27%230c7a62%27 stroke=%27none%27/%3E%3C/svg%3E">
+  <script>try { const t = JSON.parse(localStorage.getItem('osnt.theme')); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}</script>
   <link rel="stylesheet" href="/static/osnt-ui.css">
   <style>
-    .panel { position: relative; flex: 1 1 auto; min-height: 0; background: var(--bg); }
+    body.fixed { position: relative; }
+    body.fixed::before { content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none; background: radial-gradient(60% 50% at 12% 0%, var(--wash), transparent 70%); }
+    body.fixed > * { position: relative; z-index: 1; }
+    .topbar { background: var(--glass); }
+    /* same strip as the workbench: tabs sit on glass, the content is a framed sheet below */
+    .tabs.wbtabs { background: var(--glass); border-bottom: 1px solid var(--glass-edge); padding: 6px 8px 0; gap: 2px; -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); align-items: flex-end; }
+    .tabs.wbtabs .tab { min-height: 36px; padding: 0 16px; border-radius: 9px 9px 0 0; border: 1px solid transparent; border-bottom: 0; }
+    .tabs.wbtabs .tab[aria-selected="true"] { background: var(--surface); border-color: var(--edge); margin-bottom: -1px; min-height: 37px; }
+    .tabs.wbtabs .tab[aria-selected="true"]::after { left: 8px; right: 8px; top: -1px; bottom: auto; border-radius: 0 0 2px 2px; }
+    .panel { position: relative; flex: 1 1 auto; min-height: 0; margin: 0 8px 8px; background: var(--surface); border: 1px solid var(--edge); border-top: 0; border-radius: 0 0 var(--radius) var(--radius); overflow: hidden; }
     iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--bg); color-scheme: normal; }
     .panel .loading { position: absolute; left: var(--gutter); top: 24px; z-index: 0; }
     .panel.ready .loading { display: none; }
+    @media (max-width: 640px) { .panel { margin: 0; border-left: 0; border-right: 0; border-radius: 0; } }
   </style>
 </head>
 <body class="fixed">
@@ -25,7 +36,7 @@
     <h1>Settings</h1>
     <div class="bar-end"><button id="out" class="btn sm ghost">Sign out</button></div>
   </header>
-  <nav class="tabs" role="tablist" aria-label="Settings sections">
+  <nav class="tabs wbtabs" role="tablist" aria-label="Settings sections">
     <button class="tab" role="tab" id="tab-keys" aria-controls="frame" data-src="/p/credentials/" aria-selected="true" tabindex="0">API keys</button>
     <button class="tab" role="tab" id="tab-pkgs" aria-controls="frame" data-src="/p/packages/" aria-selected="false" tabindex="-1">Packages</button>
   </nav>
@@ -44,10 +55,14 @@
       try { history.replaceState(null, '', '#' + tab.dataset.src.split('/')[2]); } catch {}
     }
     // Links inside a settings page (the "back to OSNT" link) should leave the frame, not nest the portal in it.
-    // Pages inside the frame also drop their own top bar: this shell already carries it.
+    // Pages inside the frame also drop their own top bar: this shell already carries it. The theme follows the hub's choice.
     frame.onload = () => {
       panel.classList.add('ready');
-      try { const d = frame.contentDocument; d.documentElement.classList.add('embedded'); if (!d.querySelector('base')) { const b = d.createElement('base'); b.target = '_top'; d.head.prepend(b); } } catch {}
+      try {
+        const d = frame.contentDocument; d.documentElement.classList.add('embedded');
+        const t = document.documentElement.dataset.theme; if (t) d.documentElement.dataset.theme = t;
+        if (!d.querySelector('base')) { const b = d.createElement('base'); b.target = '_top'; d.head.prepend(b); }
+      } catch {}
     };
     tabs.forEach(t => t.onclick = () => show(t));
     // Arrow keys move between tabs (roving tabindex); Home and End jump to the ends.

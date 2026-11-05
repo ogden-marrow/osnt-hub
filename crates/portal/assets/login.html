@@ -6,14 +6,14 @@
   <meta name="color-scheme" content="light dark">
   <title>Sign in · OSNT</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%230c7a62%27 stroke-width=%272.2%27%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%279%27/%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%273.2%27 fill=%27%230c7a62%27 stroke=%27none%27/%3E%3C/svg%3E">
+  <script>try { const t = JSON.parse(localStorage.getItem('osnt.theme')); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}</script>
   <link rel="stylesheet" href="/static/osnt-ui.css">
   <style>
-    body { display: grid; place-items: center; padding: 24px 16px; }
-    .auth { width: min(400px, 100%); }
-    .auth .mark { width: 40px; height: 40px; color: var(--accent); margin-bottom: 20px; }
-    .auth h1 { margin: 0 0 6px; font-size: 22px; font-weight: 650; letter-spacing: -.01em; }
+    .auth { width: min(420px, 100%); }
+    .auth .mark { width: 44px; height: 44px; color: var(--accent); margin-bottom: 22px; }
+    .auth h1 { margin: 0 0 6px; font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; }
     .auth .lede { margin: 0 0 24px; color: var(--ink-2); }
-    .auth .card { padding: 24px; }
+    .auth .panel { padding: 28px; background: var(--glass); border: 1px solid var(--edge-strong); border-radius: 16px; box-shadow: var(--shadow-float); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); }
     #msg { margin-top: 16px; font-size: 13px; line-height: 1.5; color: var(--ink); background: var(--err-soft); border-left: 3px solid var(--err); border-radius: var(--radius-sm); padding: 10px 12px; overflow-wrap: anywhere; }
     #msg:empty { display: none; }
     #msg small { display: block; color: var(--ink-2); font-size: 12px; margin-top: 4px; }
@@ -21,16 +21,18 @@
     .foot { margin: 16px 0 0; text-align: center; font-size: 12px; color: var(--ink-3); }
   </style>
 </head>
-<body>
-  <main class="auth">
-    <div class="card">
-      <svg class="mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/><path d="M12 3v4" stroke-linecap="round"/></svg>
-      <h1>Sign in to OSNT</h1>
-      <p class="lede">Use the passkey on this device or your security key. There is no password.</p>
-      <button id="go" class="btn primary lg block" autofocus>Sign in with passkey</button>
-      <div id="msg" role="alert" aria-live="assertive"></div>
+<body class="wb-plain">
+  <main class="wb-auth">
+    <div class="auth">
+      <div class="panel">
+        <svg class="mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/><path d="M12 3v4" stroke-linecap="round"/></svg>
+        <h1>Sign in to OSNT</h1>
+        <p class="lede">Use the passkey on this device or your security key. There is no password.</p>
+        <button id="go" class="btn primary lg block" autofocus>Sign in with passkey</button>
+        <div id="msg" role="alert" aria-live="assertive"></div>
+      </div>
+      <p class="foot">First time on this hub? Setup opens automatically.</p>
     </div>
-    <p class="foot">First time on this hub? Setup opens automatically.</p>
   </main>
   <script>
     const $ = id => document.getElementById(id);

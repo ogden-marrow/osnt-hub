@@ -2,241 +2,766 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
-  <title>OSNT Hub</title>
+  <title>OSNT Workbench</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%230c7a62%27 stroke-width=%272.2%27%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%279%27/%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%273.2%27 fill=%27%230c7a62%27 stroke=%27none%27/%3E%3C/svg%3E">
+  <script>try { const t = JSON.parse(localStorage.getItem('osnt.theme')); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}</script>
   <link rel="stylesheet" href="/static/osnt-ui.css">
-  <style>
-    .tools { display: grid; grid-template-columns: repeat(auto-fill, minmax(236px, 1fr)); gap: 10px; }
-    .cardwrap { position: relative; min-width: 0; }
-    .tool { display: flex; flex-direction: column; gap: 4px; height: 100%; min-height: 84px; padding: 12px 40px 12px 14px; }
-    .tool h3 { margin: 0; font-size: 14px; font-weight: 650; line-height: 1.3; display: flex; align-items: center; gap: 8px; min-width: 0; }
-    .tool h3 span.t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .tool p { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-    .tool.live { border-left: 3px solid var(--accent); }
-    .tool.offline { border-left: 3px solid var(--warn); background: transparent; }
-    .tool.planned { background: transparent; border-style: dashed; }
-    .tool.offline h3, .tool.planned h3, .tool.offline p, .tool.planned p { color: var(--ink-3); }
-    .tool .note { margin-top: auto; font-size: 12px; color: var(--warn); font-weight: 600; }
-    .tool .note.planned { color: var(--ink-3); }
-    .star { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; display: grid; place-items: center; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--ink-3); cursor: pointer; padding: 0; }
-    .star svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
-    .star:hover { background: var(--surface-2); color: var(--ink); }
-    .star[aria-pressed="true"] { color: var(--warn); }
-    .star[aria-pressed="true"] svg { fill: currentColor; }
-    .star:not([aria-pressed="true"]) { opacity: 0; }
-    .cardwrap:hover .star, .cardwrap:focus-within .star, .star:focus-visible { opacity: 1; }
-    @media (hover: none) { .star:not([aria-pressed="true"]) { opacity: .7; } }
-    .grp { margin-top: 18px; }
-    .grp-head { display: flex; align-items: center; gap: 8px; width: 100%; margin: 0 0 8px; padding: 4px 6px; margin-left: -6px; border: 0; background: none; color: var(--ink-2); font: 600 var(--fs-sm)/1.3 var(--font); cursor: pointer; text-align: left; border-radius: var(--radius-sm); }
-    .grp-head:hover { background: var(--surface-2); color: var(--ink); }
-    .grp-head .chev { width: 14px; height: 14px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; transition: transform var(--t-fast) var(--ease); }
-    .grp-head[aria-expanded="false"] .chev { transform: rotate(-90deg); }
-    .grp-head .count { font-weight: 500; color: var(--ink-3); font-size: var(--fs-xs); }
-    .grp-head .count b { color: var(--ok); font-weight: 600; }
-    .grp-body[hidden] { display: none !important; }
-    .search { position: relative; width: min(340px, 100%); }
-    .search input { width: 100%; padding-right: 40px; }
-    .search kbd { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); pointer-events: none; }
-    .search input:not(:placeholder-shown) ~ kbd, .search input:focus ~ kbd { display: none; }
-    .tool-skel { height: 84px; }
-    .tools-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: -8px 0 4px; }
-    .tools-bar .seg button { min-height: 28px; }
-    @media (max-width: 640px) { .search kbd { display: none; } .search { width: 100%; } .tools { grid-template-columns: 1fr; } }
-  </style>
 </head>
-<body>
-  <a class="skip" href="#grids">Skip to tools</a>
-  <header class="topbar">
-    <a class="brand" href="/" aria-label="OSNT hub home">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/><path d="M12 3v4" stroke-linecap="round"/></svg>
-      OSNT
-    </a>
-    <span class="sep" aria-hidden="true">/</span><span class="muted">Hub</span>
-    <div class="bar-end"><span id="status" class="status" role="status" aria-live="polite">Loading…</span><a class="btn sm ghost" href="/settings">Settings</a></div>
-  </header>
+<body class="wb">
+  <a class="skip" href="#stage">Skip to workspace</a>
 
-  <main class="page wide">
-    <div class="page-head">
-      <div>
-        <h1>Tools</h1>
-        <p id="summary">Open-source intelligence tools running on this hub.</p>
-      </div>
-      <div class="search">
-        <label class="sr-only" for="filter">Filter tools</label>
-        <input id="filter" type="search" placeholder="Filter tools" autocomplete="off" disabled>
-        <kbd aria-hidden="true">/</kbd>
+  <aside class="wb-rail" id="rail" aria-label="Tools">
+    <div class="wb-rail-head">
+      <button type="button" class="wb-mark" id="markBtn" aria-label="OSNT overview" title="Overview (Alt+0)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/><path d="M12 3v4" stroke-linecap="round"/></svg>
+        <span>OSNT</span>
+      </button>
+      <span class="wb-spacer"></span>
+      <button type="button" class="wb-ibtn" id="railToggle" aria-label="Collapse sidebar" aria-pressed="false" title="Collapse sidebar (Ctrl+B)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M9.5 4.5v15"/></svg></button>
+    </div>
+    <button type="button" class="wb-cmd" id="cmdBtn" aria-haspopup="dialog" title="Command palette">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg>
+      <span>Search or paste a lead</span><kbd id="cmdKey">Ctrl K</kbd>
+    </button>
+    <nav class="wb-rail-scroll" id="railList" aria-label="Open, pinned, recent and all tools"></nav>
+    <div class="wb-rail-foot">
+      <span class="summary" id="summary" role="status" aria-live="polite">Loading…</span>
+      <button type="button" class="wb-ibtn" id="themeBtn" aria-label="Switch to dark theme" title="Switch theme"></button>
+      <a class="wb-ibtn" href="/settings" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
+    </div>
+  </aside>
+
+  <div class="wb-main">
+    <div class="wb-tabs">
+      <div class="wb-tablist" role="tablist" id="tablist" aria-label="Open tools"></div>
+      <div class="wb-tools">
+        <button type="button" class="wb-ibtn" id="reloadBtn" aria-label="Reload this tool" title="Reload this tool"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
+        <button type="button" class="wb-ibtn hide-phone" id="splitBtn" aria-label="Split view" aria-pressed="false" title="Split view (Ctrl+\)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M12 4.5v15"/></svg></button>
+        <button type="button" class="wb-ibtn hide-phone" id="popBtn" aria-label="Open this tool in its own window" title="Open in its own window"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></svg></button>
       </div>
     </div>
-    <div class="tools-bar" id="bar" hidden>
-      <span class="small muted" id="hint">Star a tool to pin it to the top. Press <kbd>/</kbd> to search.</span>
-      <div class="seg" role="group" aria-label="Groups">
-        <button type="button" id="expand">Expand all</button><button type="button" id="collapse">Collapse all</button>
-      </div>
+
+    <main class="wb-stage" id="stage" tabindex="-1">
+      <section class="wb-home" id="home" aria-label="Overview">
+        <div class="wb-home-in">
+          <div>
+            <h1>Workbench</h1>
+            <p class="lede" id="lede">Open tools side by side, keep them running while you pivot, and jump anywhere with <kbd id="ledeKey">Ctrl K</kbd>.</p>
+            <div class="wb-lead">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg>
+              <label class="sr-only" for="lead">Find a tool, or paste an IP, domain, ASN, coordinates, aircraft or CVE</label>
+              <input id="lead" type="search" autocomplete="off" spellcheck="false" placeholder="Find a tool, or paste an IP, domain, coordinates, aircraft, CVE" disabled>
+            </div>
+            <div class="wb-chips" id="samples" role="group" aria-label="Example leads"></div>
+            <div id="route" aria-live="polite"></div>
+            <div id="tiles" aria-live="polite" aria-busy="true"></div>
+          </div>
+          <aside class="wb-side" aria-label="Hub status">
+            <div>
+              <h2>Hub</h2>
+              <p class="wb-stat"><span id="statN">-</span><small id="statL">running</small></p>
+              <ul class="wb-offl" id="offl"></ul>
+            </div>
+            <div class="wb-keys-card">
+              <h2>Keys</h2>
+              <dl class="wb-keys">
+                <dt><kbd class="mk">Ctrl</kbd> <kbd>K</kbd></dt><dd>Search, leads, commands</dd>
+                <dt><kbd>Shift</kbd> <kbd>Enter</kbd></dt><dd>Open to the side</dd>
+                <dt><kbd class="mk">Ctrl</kbd> <kbd>\</kbd></dt><dd>Split view</dd>
+                <dt><kbd>Alt</kbd> <kbd>1</kbd>-<kbd>9</kbd></dt><dd>Jump to tab</dd>
+                <dt><kbd>Alt</kbd> <kbd>W</kbd></dt><dd>Close tab</dd>
+              </dl>
+            </div>
+          </aside>
+        </div>
+      </section>
+      <div class="wb-handle" id="handle" role="separator" aria-orientation="vertical" aria-label="Resize panes" aria-valuemin="25" aria-valuemax="75" aria-valuenow="50" tabindex="0" hidden></div>
+    </main>
+  </div>
+
+  <nav class="wb-bottom" aria-label="Workbench">
+    <button type="button" id="bbHome"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/></svg>Overview</button>
+    <button type="button" id="bbTools"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Tools</button>
+    <button type="button" id="bbSearch"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg>Search</button>
+    <button type="button" id="bbTabs"><span class="ct"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="3"/><path d="M4 9.5h16"/></svg><b id="bbCount" hidden>0</b></span>Open</button>
+  </nav>
+  <button type="button" class="wb-scrim" id="scrim" aria-label="Close menu" tabindex="-1"></button>
+
+  <div class="wb-pal-shield" id="palShield"></div>
+  <div class="wb-pal" id="pal" role="dialog" aria-modal="true" aria-label="Command palette">
+    <div class="wb-pal-in">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg>
+      <input id="palIn" type="text" role="combobox" aria-expanded="true" aria-controls="palList" aria-autocomplete="list" aria-label="Search tools, paste a lead or run a command" placeholder="Search tools, paste a lead, or type a command" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go">
+      <span class="mode" id="palMode" hidden></span>
     </div>
-    <div id="grids" aria-live="polite" aria-busy="true">
-      <div class="tools"><div class="skeleton tool-skel"></div><div class="skeleton tool-skel"></div><div class="skeleton tool-skel"></div><div class="skeleton tool-skel"></div></div>
+    <ul class="wb-pal-list" id="palList" role="listbox" aria-label="Results"></ul>
+    <div class="wb-pal-foot" aria-hidden="true">
+      <span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Shift</kbd><kbd>Enter</kbd> open to the side</span><span><kbd>Esc</kbd> close</span>
+      <span>Try <kbd>1.1.1.1</kbd> <kbd>example.com</kbd> <kbd>51.5, -0.12</kbd> <kbd>adsb N123AB</kbd></span>
     </div>
-  </main>
+  </div>
+  <div class="sr-only" id="live" role="status" aria-live="polite"></div>
 
   <script>
-    (() => {
-      const root = document.getElementById('grids'), status = document.getElementById('status'), bar = document.getElementById('bar'),
-            filter = document.getElementById('filter'), summary = document.getElementById('summary');
-      const RECENT_MAX = 6;
+  (() => {
+    'use strict';
+    const $ = id => document.getElementById(id);
+    const RECENT_MAX = 6;
+    const phoneMQ = matchMedia('(max-width: 720px)');
+    const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+    const MOD = isMac ? '⌘' : 'Ctrl';
 
-      // Per-browser conveniences (favourites, recently used, collapsed groups). Storage may be blocked: every access is guarded.
-      const store = {
-        get(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d; } catch { return d; } },
-        set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
-      };
-      let favs = new Set(store.get('osnt.favs', []).filter(x => typeof x === 'string'));
-      let recent = store.get('osnt.recent', []).filter(x => typeof x === 'string').slice(0, RECENT_MAX);
-      let collapsed = new Set(store.get('osnt.collapsed', []).filter(x => typeof x === 'string'));
+    /* ---------- storage: per-browser conveniences, every access guarded (same keys as the old launcher) ---------- */
+    const store = {
+      get(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d; } catch { return d; } },
+      set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+    };
+    let favs = new Set(store.get('osnt.favs', []).filter(x => typeof x === 'string'));
+    let recent = store.get('osnt.recent', []).filter(x => typeof x === 'string').slice(0, RECENT_MAX);
+    let collapsed = new Set(store.get('osnt.collapsed', []).filter(x => typeof x === 'string'));
 
-      let cfg = null, loadedOnce = false, lastSig = '';
-      const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
-      const idOf = t => t.href || ('planned:' + t.name);
-      const STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9 6.8 19.7l1-5.9-4.3-4.1 5.9-.8z"/></svg>';
-      const CHEV = '<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    /* ---------- small helpers ---------- */
+    const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+    const svg = (d, cls) => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('aria-hidden', 'true'); if (cls) s.setAttribute('class', cls); s.innerHTML = d; return s; };
+    const ICON = {
+      home: '<path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/>',
+      x: '<path d="M6 6l12 12M18 6L6 18"/>',
+      chev: '<path d="M6 9l6 6 6-6"/>',
+      star: '<path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9 6.8 19.7l1-5.9-4.3-4.1 5.9-.8z"/>',
+      sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/>',
+      moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+      split: '<rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M12 4.5v15"/>',
+      swap: '<path d="M7 7h12l-3-3M17 17H5l3 3"/>',
+      reload: '<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',
+      cmd: '<path d="M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3z"/>',
+      route: '<path d="M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/><path d="M8 17h6a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h6"/>',
+    };
+    const iconBtn = (ic, label, cls) => { const b = el('button', 'wb-ibtn ' + (cls || '')); b.type = 'button'; b.setAttribute('aria-label', label); b.title = label; b.append(svg(ICON[ic])); return b; };
+    const announce = msg => { const l = $('live'); l.textContent = ''; setTimeout(() => { l.textContent = msg; }, 30); };
+    const idOf = t => t.href || ('planned:' + t.name);
+    const baseOf = u => { const m = /^\/p\/[^/?#]+\//.exec(u); return m ? m[0] : null; };
 
-      function fail(msg) {
-        status.textContent = 'Offline'; root.setAttribute('aria-busy', 'false'); root.innerHTML = ''; bar.hidden = true;
-        const s = el('div', 'state error'); s.setAttribute('role', 'alert');
-        s.append(el('div', 'h3', 'Could not load the tool list'), el('p', '', msg));
-        const b = el('button', 'btn', 'Try again'); b.onclick = () => load(); s.append(b);
-        root.append(s);
+    function mono(name) {
+      const w = name.replace(/[()&,]/g, ' ').split(/\s+/).filter(x => /^[A-Za-z0-9]/.test(x) && !/^(and|of|the|to)$/i.test(x));
+      const m = w.length > 1 ? w[0][0] + w[1][0] : (w[0] || '?').slice(0, 2);
+      return m.toUpperCase();
+    }
+    const monoEl = name => el('span', 'wb-mono', mono(name));
+
+    /* ---------- theme (shell + every open plugin frame; plugins follow data-theme from osnt-ui.css) ---------- */
+    const root = document.documentElement;
+    const effectiveTheme = () => root.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    function paintThemeBtn() {
+      const dark = effectiveTheme() === 'dark', b = $('themeBtn');
+      b.replaceChildren(svg(dark ? ICON.sun : ICON.moon));
+      const l = dark ? 'Switch to light theme' : 'Switch to dark theme'; b.setAttribute('aria-label', l); b.title = l;
+    }
+    function setTheme(t) {
+      root.dataset.theme = t; store.set('osnt.theme', t); paintThemeBtn();
+      for (const tab of tabs) syncFrameTheme(tab);
+    }
+    function syncFrameTheme(tab) { try { const d = tab.frame?.contentDocument; if (d) d.documentElement.dataset.theme = effectiveTheme(); } catch {} }
+    matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { paintThemeBtn(); for (const tab of tabs) syncFrameTheme(tab); });
+
+    /* ---------- data ---------- */
+    let cfg = null, tools = [], byId = new Map(), loadedOnce = false, lastSig = '', offline = false;
+    const openable = () => tools.filter(t => t.href);
+    const toolByBase = base => byId.get(base);
+    const nameFor = base => toolByBase(base)?.name || base.split('/')[2];
+    function ingest(next) {
+      cfg = next;
+      tools = (cfg.grid || []).flatMap(g => (g.tool || []).map(t => ({ ...t, group: g.name, id: idOf(t) })));
+      byId = new Map(tools.filter(t => t.href).map(t => [t.id, t]));
+    }
+
+    /* ---------- workspace state ---------- */
+    // tab = { base, url, title, frame, wrap, busy }.  paneA is always the main pane; paneB only exists while split.
+    let tabs = [], paneA = null, paneB = null, split = false, focus = 'a', view = 'home', ratio = 50, mru = [];
+    const tabOf = key => tabs.find(t => t.base === key);
+    const isSplit = () => split && !phoneMQ.matches && paneA && paneB && paneA !== paneB;
+    const focusedKey = () => view !== 'tabs' ? null : (isSplit() && focus === 'b' ? paneB : paneA);
+    const touch = key => { mru = [key, ...mru.filter(k => k !== key)]; };
+
+    function liveUrl(tab) { try { const w = tab.frame?.contentWindow; if (w && w.location.pathname.startsWith('/p/')) return w.location.pathname + w.location.search + w.location.hash; } catch {} return tab.url; }
+    function save() {
+      for (const t of tabs) t.url = liveUrl(t);
+      store.set('osnt.wb', { tabs: tabs.map(t => ({ base: t.base, url: t.url, title: t.title })), a: paneA, b: paneB, split, focus, view, ratio, mru });
+    }
+
+    function ensureFrame(tab) {
+      if (tab.frame) { if (!tab.frame.getAttribute('src')) { tab.busy = true; tab.wrap.classList.remove('ready'); tab.frame.src = tab.url; } return; }
+      const wrap = el('div', 'wb-frame'); wrap.dataset.key = tab.base;
+      const head = el('div', 'wb-pane-head');
+      head.append(monoEl(tab.title), el('span', 'nm', tab.title));
+      const bReload = iconBtn('reload', 'Reload ' + tab.title); bReload.dataset.act = 'reload';
+      const bSwap = iconBtn('swap', 'Swap panes'); bSwap.dataset.act = 'swap';
+      const bClose = iconBtn('x', 'Close split'); bClose.dataset.act = 'unsplit';
+      head.append(bReload, bSwap, bClose);
+      head.addEventListener('pointerdown', () => focusPane(paneOfKey(tab.base)));
+      const load = el('div', 'wb-load'); load.append(el('span', 'spin'), document.createTextNode('Loading ' + tab.title + '…')); load.setAttribute('role', 'status');
+      const fr = document.createElement('iframe'); fr.title = tab.title; fr.setAttribute('allow', 'clipboard-write; fullscreen; geolocation');
+      wrap.append(head, fr, load);
+      $('stage').insertBefore(wrap, $('handle'));
+      tab.wrap = wrap; tab.frame = fr; tab.busy = true;
+      fr.addEventListener('load', () => onFrameLoad(tab));
+      fr.src = tab.url;
+    }
+    function onFrameLoad(tab) {
+      tab.busy = false; tab.wrap.classList.add('ready');
+      try {
+        const w = tab.frame.contentWindow, d = tab.frame.contentDocument;
+        if (/^\/(login|setup)/.test(w.location.pathname)) { top.location.href = w.location.pathname + w.location.search; return; }
+        d.documentElement.classList.add('embedded');
+        d.documentElement.dataset.theme = effectiveTheme();
+        d.addEventListener('keydown', onKey, true);
+        d.addEventListener('pointerdown', () => focusPane(paneOfKey(tab.base)), true);
+        d.addEventListener('click', e => linkClick(e, tab), true);
+        if (w.location.pathname.startsWith('/p/')) tab.url = w.location.pathname + w.location.search + w.location.hash;
+      } catch { /* cross-origin frame: leave it alone */ }
+      paint(); save();
+    }
+    // Links to another tool open as a tab here; modified clicks keep the browser's own behaviour.
+    function linkClick(e, tab) {
+      if (e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.altKey) return;
+      const a = e.target?.closest?.('a[href]'); if (!a || (a.target && a.target !== '_top' && a.target !== '_self')) return;
+      let u; try { u = new URL(a.href, a.ownerDocument.baseURI); } catch { return; }
+      if (u.origin !== location.origin) return;
+      if (baseOf(u.pathname)) { e.preventDefault(); openUrl(u.pathname + u.search + u.hash, { side: e.shiftKey && !phoneMQ.matches }); }
+      else if (u.pathname === '/' && !u.search) { e.preventDefault(); showHome(); }
+    }
+    const paneOfKey = key => (isSplit() && paneB === key) ? 'b' : 'a';
+
+    /* ---------- tab operations ---------- */
+    function openUrl(url, o = {}) {
+      const base = baseOf(url); if (!base) { location.href = url; return; }
+      let tab = tabOf(base);
+      const bare = url === base;
+      if (!tab) { tab = { base, url, title: nameFor(base) }; tabs.push(tab); }
+      else if (!bare && url !== liveUrl(tab)) { tab.url = url; if (tab.frame) { tab.busy = true; tab.wrap.classList.remove('ready'); tab.frame.src = url; } }
+      noteRecent(base);
+      show(base, o);
+      return tab;
+    }
+    function show(key, o = {}) {
+      const was = { a: paneA, b: paneB };
+      view = 'tabs';
+      if (phoneMQ.matches) { paneA = key; split = false; focus = 'a'; }
+      else if (o.side && paneA && paneA !== key) { split = true; paneB = key; focus = 'b'; if (was.a === key) paneA = was.b || paneA; }
+      else if (isSplit()) {
+        if (paneB === key) focus = 'b'; else if (paneA === key) focus = 'a';
+        else if (focus === 'b') paneB = key; else paneA = key;
+      } else { paneA = key; focus = 'a'; split = false; }
+      touch(key); render(); save();
+      const t = tabOf(key); if (t) announce(t.title + ' opened');
+    }
+    function showHome() { view = 'home'; render(); save(); }
+    function closeTab(key) {
+      const tab = tabOf(key); if (!tab) return;
+      const idx = tabs.indexOf(tab);
+      tab.wrap?.remove(); tabs.splice(idx, 1); mru = mru.filter(k => k !== key);
+      const next = () => mru.find(k => k !== paneA && k !== paneB && tabOf(k)) || mru.find(tabOf);
+      if (paneB === key) { paneB = null; split = false; focus = 'a'; }
+      if (paneA === key) {
+        if (split && paneB) { paneA = paneB; paneB = null; split = false; focus = 'a'; }
+        else { paneA = next() || null; if (!paneA) view = 'home'; }
       }
+      render(); save(); announce(tab.title + ' closed');
+      const tl = $('tablist'); (tl.querySelector('[aria-selected="true"]') || tl.firstChild)?.focus?.();
+    }
+    function closeAll() { for (const t of [...tabs]) t.wrap?.remove(); tabs = []; mru = []; paneA = paneB = null; split = false; view = 'home'; render(); save(); }
+    function focusPane(p) { if (!isSplit() || focus === p) return; focus = p; paint(); }
+    function toggleSplit() {
+      if (phoneMQ.matches) return;
+      if (isSplit()) { split = false; focus = 'a'; render(); save(); announce('Split closed'); return; }
+      const other = mru.find(k => k !== paneA && tabOf(k));
+      if (paneA && other) { split = true; paneB = other; focus = 'b'; render(); save(); announce('Split opened'); }
+      else openPalette({ side: true });
+    }
+    function reloadCurrent() {
+      const t = tabOf(focusedKey()); if (!t || !t.frame) return;
+      t.busy = true; t.wrap.classList.remove('ready'); paint();
+      try { t.frame.contentWindow.location.reload(); } catch { t.frame.src = t.frame.src; }
+    }
+    function noteRecent(base) { recent = [base, ...recent.filter(x => x !== base)].slice(0, RECENT_MAX); store.set('osnt.recent', recent); }
+    function toggleFav(id) { favs.has(id) ? favs.delete(id) : favs.add(id); store.set('osnt.favs', [...favs]); renderRail(); renderHome(); }
+    function cycle(dir) { const ks = tabs.map(t => t.base); if (!ks.length) return; const i = ks.indexOf(focusedKey()); show(ks[((i < 0 ? 0 : i + dir) + ks.length) % ks.length]); }
 
-      function card(t, extra) {
+    /* ---------- rendering: tab strip, frames, rail ---------- */
+    function render() {
+      for (const t of tabs) if (view === 'tabs' && (t.base === paneA || (isSplit() && t.base === paneB))) ensureFrame(t);
+      paint(); renderRail(); if (view === 'home') renderHome();
+    }
+    function paint() {
+      const sp = isSplit(), stage = $('stage');
+      stage.classList.toggle('split', sp);
+      stage.style.setProperty('--split', ratio + '%');
+      $('handle').hidden = !sp; $('handle').setAttribute('aria-valuenow', String(Math.round(ratio)));
+      $('home').hidden = view !== 'home';
+      for (const t of tabs) {
+        if (!t.wrap) continue;
+        const a = view === 'tabs' && t.base === paneA, b = view === 'tabs' && sp && t.base === paneB;
+        t.wrap.classList.toggle('is-a', a); t.wrap.classList.toggle('is-b', b);
+        t.wrap.classList.toggle('focus', (a && (!sp || focus === 'a')) || (b && focus === 'b'));
+        t.wrap.inert = !(a || b);
+      }
+      // tab strip
+      const tl = $('tablist'), had = document.activeElement?.closest?.('#tablist') ? document.activeElement.dataset.key : null;
+      tl.replaceChildren();
+      const home = el('button', 'wb-tab home'); home.type = 'button'; home.setAttribute('role', 'tab'); home.dataset.key = '';
+      home.setAttribute('aria-selected', String(view === 'home')); home.tabIndex = view === 'home' ? 0 : -1; home.setAttribute('aria-label', 'Overview'); home.title = 'Overview (Alt+0)';
+      home.append(svg(ICON.home), el('span', 'sr-only', 'Overview')); home.onclick = showHome;
+      tl.append(home);
+      tabs.forEach((t, i) => {
+        const sel = view === 'tabs' && (t.base === focusedKey());
+        const b = el('div', 'wb-tab' + (t.base === paneA && view === 'tabs' ? ' in-a' : '') + (sp && t.base === paneB ? ' in-b' : '') + (t.busy ? ' busy' : ''));
+        b.setAttribute('role', 'tab'); b.dataset.key = t.base; b.tabIndex = sel || (view !== 'tabs' && i === 0 && false) ? 0 : -1;
+        b.setAttribute('aria-selected', String(sel));
+        b.title = t.title + (i < 9 ? ' (Alt+' + (i + 1) + ')' : '');
+        const info = toolByBase(t.base);
+        const dot = el('span', 'dot ' + (info ? (info.status === 'live' ? 'ok' : 'warn') : 'off')); dot.setAttribute('role', 'img'); dot.setAttribute('aria-label', info ? (info.status === 'live' ? 'Running' : 'Not running') : 'Unknown status');
+        const x = el('button', 'x'); x.type = 'button'; x.tabIndex = -1; x.setAttribute('aria-label', 'Close ' + t.title); x.title = 'Close (Alt+W)'; x.append(svg(ICON.x));
+        x.onclick = e => { e.stopPropagation(); closeTab(t.base); };
+        b.append(dot, el('span', 'nm', t.title), x);
+        b.onclick = () => show(t.base);
+        b.addEventListener('auxclick', e => { if (e.button === 1) { e.preventDefault(); closeTab(t.base); } });
+        tl.append(b);
+      });
+      // roving tabindex: if nothing is selected (overview), the overview tab is the stop
+      if (!tl.querySelector('[tabindex="0"]')) tl.firstChild.tabIndex = 0;
+      if (had !== null) (tl.querySelector(`[data-key="${CSS.escape(had)}"]`) || tl.querySelector('[tabindex="0"]'))?.focus();
+      const cur = focusedKey();
+      const sel = tl.querySelector('[aria-selected="true"]'); sel?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+      $('splitBtn').setAttribute('aria-pressed', String(sp));
+      $('reloadBtn').disabled = !cur; $('popBtn').disabled = !cur;
+      $('bbCount').hidden = !tabs.length; $('bbCount').textContent = tabs.length;
+      $('bbHome').setAttribute('aria-current', String(view === 'home'));
+      document.title = (cur ? nameFor(cur) + ' · ' : '') + 'OSNT Workbench';
+      // The address bar is a shareable workspace: #/p/a/?q=x for one tool, #/p/a/?q=x|/p/b/ for a split.
+      try { history.replaceState(null, '', cur ? '#' + liveUrl(tabOf(paneA)) + (sp ? '|' + liveUrl(tabOf(paneB)) : (focusedKey() !== paneA ? '' : '')) : location.pathname + location.search); } catch {}
+    }
+
+    function railItem(t, opts = {}) {
+      const wrap = el('div', 'wb-item-wrap');
+      const open = !!tabOf(t.href), cur = focusedKey() === t.href;
+      const a = el('a', 'wb-item' + (open ? ' is-open' : '') + (cur ? ' is-current' : '') + (t.status === 'offline' ? ' is-off' : ''));
+      a.href = t.href; a.title = t.name + (t.status === 'offline' ? ' (not running)' : '') + ' - Shift+click opens to the side';
+      if (cur) a.setAttribute('aria-current', 'page');
+      const nm = el('span', 'nm', t.name);
+      const dot = el('span', 'dot ' + (t.status === 'live' ? 'ok' : 'warn')); dot.setAttribute('role', 'img'); dot.setAttribute('aria-label', t.status === 'live' ? 'Running' : 'Not running');
+      a.append(monoEl(t.name), nm, dot);
+      a.addEventListener('click', e => { if (e.metaKey || e.ctrlKey || e.button) return; e.preventDefault(); closeDrawer(); openUrl(t.href, { side: e.shiftKey }); });
+      wrap.append(a);
+      if (!opts.noStar) {
+        const on = favs.has(t.id), s = el('button', 'wb-star'); s.type = 'button'; s.append(svg(ICON.star));
+        s.setAttribute('aria-pressed', String(on)); s.setAttribute('aria-label', (on ? 'Unpin ' : 'Pin ') + t.name); s.title = on ? 'Unpin' : 'Pin to top';
+        s.onclick = e => { e.preventDefault(); e.stopPropagation(); toggleFav(t.id); };
+        wrap.append(s);
+      }
+      return wrap;
+    }
+    function railSection(title, list, o = {}) {
+      const sec = el('div', 'wb-sec'); const h = el('div', 'wb-sec-head'); h.append(el('span', '', title)); sec.append(h);
+      for (const t of list) sec.append(railItem(t, o));
+      return sec;
+    }
+    function renderRail() {
+      const host = $('railList'), keep = host.scrollTop; host.replaceChildren();
+      const addSep = () => host.append(el('div', 'wb-rail-sep'));
+      const openTools = tabs.map(t => ({ ...(toolByBase(t.base) || { name: t.title, status: 'live' }), href: t.base, id: t.base }));
+      if (openTools.length) { host.append(railSection('Open', openTools, { noStar: false })); addSep(); }
+      const favTools = [...favs].map(i => byId.get(i)).filter(Boolean);
+      const recTools = recent.map(i => byId.get(i)).filter(t => t && !favs.has(t.id) && !tabOf(t.id));
+      if (favTools.length) { host.append(railSection('Pinned', favTools)); addSep(); }
+      if (recTools.length) { host.append(railSection('Recent', recTools)); addSep(); }
+      for (const g of cfg?.grid || []) {
+        const list = (g.tool || []).map(t => ({ ...t, group: g.name, id: idOf(t) })).filter(t => t.href);
+        if (!list.length) continue;
+        const open = !collapsed.has(g.name), sec = el('section', 'wb-grp');
+        const hb = el('button', 'wb-sec-head'); hb.type = 'button'; hb.setAttribute('aria-expanded', String(open)); hb.append(svg(ICON.chev, 'chev'), el('span', '', g.name));
+        const up = list.filter(t => t.status === 'live').length, c = el('span', 'count', up < list.length ? `${up}/${list.length}` : String(list.length)); hb.append(c);
+        const body = el('div', 'wb-grp-body'); body.hidden = !open; body.append(...list.map(t => railItem(t)));
+        hb.onclick = () => { const now = hb.getAttribute('aria-expanded') !== 'true'; hb.setAttribute('aria-expanded', String(now)); body.hidden = !now; now ? collapsed.delete(g.name) : collapsed.add(g.name); store.set('osnt.collapsed', [...collapsed]); };
+        sec.append(hb, body); host.append(sec);
+      }
+      host.scrollTop = keep;
+    }
+
+    /* ---------- overview ---------- */
+    const SAMPLES = ['1.1.1.1', 'example.com', 'AS13335', '51.5072, -0.1276', 'N123AB', 'CVE-2024-3094'];
+    function renderHome() {
+      const host = $('tiles'), q = $('lead').value.trim().toLowerCase();
+      host.replaceChildren();
+      const mk = (t) => {
         const live = t.status === 'live' && t.href, off = t.status === 'offline';
-        const wrap = el('div', 'cardwrap'); wrap.dataset.id = idOf(t);
-        const c = el(live ? 'a' : 'div', 'card tool ' + (live ? 'tile live' : off ? 'offline' : 'planned'));
-        if (live) { c.href = t.href; c.addEventListener('click', () => noteRecent(idOf(t))); }
+        const c = el(t.href ? 'a' : 'div', 'wb-tile' + (off ? ' is-off' : '') + (!t.href ? ' planned' : ''));
+        if (t.href) { c.href = t.href; c.addEventListener('click', e => { if (e.metaKey || e.ctrlKey || e.button) return; e.preventDefault(); openUrl(t.href, { side: e.shiftKey }); }); }
         const h = el('h3'); h.append(el('span', 't', t.name));
-        if (live) { const d = el('span', 'dot ok'); d.title = 'Running'; d.setAttribute('role', 'img'); d.setAttribute('aria-label', 'Running'); h.append(d); }
-        c.append(h, el('p', '', t.description || ''));
-        if (off) c.append(el('span', 'note', 'Not running'));
-        else if (!live) c.append(el('span', 'note planned', 'Planned'));
-        c.dataset.q = (t.name + ' ' + (t.description || '')).toLowerCase();
-        c.title = off ? 'This plugin is installed but not answering. Check its service on the hub.' : (t.description || '');
-        wrap.append(c);
+        if (live) { const d = el('span', 'dot ok'); d.setAttribute('role', 'img'); d.setAttribute('aria-label', 'Running'); h.append(d); }
+        else if (off) { const d = el('span', 'dot warn'); d.setAttribute('role', 'img'); d.setAttribute('aria-label', 'Not running'); h.append(d); }
+        c.append(monoEl(t.name), h, el('p', '', off ? 'Not running. ' + (t.description || '') : !t.href ? 'Planned. ' + (t.description || '') : (t.description || '')));
+        const w = el('div', 'cardwrap'); w.style.position = 'relative'; w.append(c);
         if (t.href) {
-          const id = idOf(t), on = favs.has(id);
-          const s = el('button', 'star'); s.type = 'button'; s.innerHTML = STAR;
-          s.setAttribute('aria-pressed', String(on)); s.setAttribute('aria-label', (on ? 'Remove from favourites: ' : 'Add to favourites: ') + t.name); s.title = on ? 'Unpin from favourites' : 'Pin to favourites';
-          s.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); toggleFav(id); });
-          wrap.append(s);
+          const on = favs.has(t.id), s = el('button', 'wb-star'); s.type = 'button'; s.append(svg(ICON.star)); s.setAttribute('aria-pressed', String(on));
+          s.setAttribute('aria-label', (on ? 'Unpin ' : 'Pin ') + t.name); s.style.top = '6px'; s.style.right = '6px';
+          s.onclick = e => { e.preventDefault(); e.stopPropagation(); toggleFav(t.id); }; w.append(s); w.classList.add('wb-item-wrap');
         }
-        return wrap;
-      }
+        return w;
+      };
+      const match = t => !q || (t.name + ' ' + (t.description || '') + ' ' + t.group).toLowerCase().includes(q);
+      const group = (title, list, o = {}) => {
+        if (!list.length) return;
+        const g = el('section', 'wb-grp'); const h = el('h2', '', title);
+        if (o.count) { const up = list.filter(t => t.status === 'live').length; const c = el('span', 'count'); c.append(document.createTextNode(list.length + (up < list.length ? ' · ' : ''))); if (up < list.length) { const b = el('b', '', String(up)); c.append(b, document.createTextNode(' running')); } h.append(c); }
+        const grid = el('div', 'wb-tiles'); grid.setAttribute('role', 'group'); grid.setAttribute('aria-label', title); grid.append(...list.map(mk));
+        g.append(h, grid); host.append(g);
+      };
+      const favTools = [...favs].map(i => byId.get(i)).filter(t => t && match(t));
+      const recTools = recent.map(i => byId.get(i)).filter(t => t && !favs.has(t.id) && match(t));
+      if (!q) { group('Pinned', favTools); group('Recent', recTools); }
+      let shown = favTools.length + recTools.length;
+      for (const g of cfg?.grid || []) { const list = (g.tool || []).map(t => ({ ...t, group: g.name, id: idOf(t) })).filter(match); shown += list.length; group(g.name, list, { count: true }); }
+      if (cfg && !tools.length) host.append(Object.assign(el('div', 'state'), { innerHTML: '<div class="h3">No tools configured</div><p>Install plugins from Settings, Packages, or add tool grids to tools.toml on the hub.</p>' }));
+      else if (cfg && q && !shown && !(classify($('lead').value) && routesFor(classify($('lead').value)).length)) { const s = el('div', 'state'); s.append(el('div', 'h3', 'No tools match'), el('p', '', `Nothing matches “${$('lead').value.trim()}”. Try a place, a data source or a kind of record.`)); host.append(s); }
+      host.setAttribute('aria-busy', String(!cfg && !offline));
+      renderRoute();
+    }
+    function renderRoute() {
+      const box = $('route'); box.replaceChildren();
+      const txt = $('lead').value.trim(); if (!txt) return;
+      const lead = classify(txt); const routes = lead ? routesFor(lead) : [];
+      if (!routes.length) return;
+      const d = el('div', 'wb-route'); const p = el('p', 't'); p.append(document.createTextNode('Recognised as '), el('b', '', lead.label), document.createTextNode('. Pivot it across:')); d.append(p);
+      const row = el('div', 'wb-chips'); row.style.margin = '0';
+      const all = el('button', 'wb-chip on', `Open all ${routes.length}`); all.type = 'button'; all.onclick = () => openAll(routes);
+      row.append(all);
+      for (const r of routes) { const c = el('button', 'wb-chip' + (r.tool.status !== 'live' ? ' off' : ''), r.tool.name); c.type = 'button'; c.title = r.url; c.onclick = e => openUrl(r.url, { side: e.shiftKey }); row.append(c); }
+      d.append(row); box.append(d);
+    }
+    function renderStatus() {
+      const hrefd = tools.filter(t => t.href), live = hrefd.filter(t => t.status === 'live').length, off = hrefd.filter(t => t.status === 'offline');
+      $('statN').textContent = String(live); $('statL').textContent = off.length ? `running, ${off.length} not responding` : 'running';
+      $('summary').textContent = off.length ? `${live} running · ${off.length} not running` : `${live} running`;
+      const ul = $('offl'); ul.replaceChildren();
+      for (const t of off) { const li = el('li'), b = el('button'); b.type = 'button'; b.append(el('span', 'dot warn'), document.createTextNode(t.name)); b.title = 'Open anyway'; b.onclick = () => openUrl(t.href); li.append(b); ul.append(li); }
+    }
 
-      function noteRecent(id) { recent = [id, ...recent.filter(x => x !== id)].slice(0, RECENT_MAX); store.set('osnt.recent', recent); }
-      function toggleFav(id) {
-        const had = document.activeElement?.closest?.('.cardwrap') ? id : null;
-        favs.has(id) ? favs.delete(id) : favs.add(id); store.set('osnt.favs', [...favs]); render();
-        if (had) { const b = [...document.querySelectorAll('.star')].find(s => s.closest('.cardwrap').querySelector('a')?.getAttribute('href') === id); b?.focus(); }
+    /* ---------- leads: what a pasted string is, and which tools take it ---------- */
+    const IP4 = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/;
+    const IP6 = /^[0-9a-f:]{3,39}$/i;
+    function parseCoord(s) {
+      const m = /^\s*(-?\d{1,2}(?:\.\d+)?)\s*[, ]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/.exec(s); if (!m) return null;
+      const la = +m[1], lo = +m[2]; return Math.abs(la) <= 90 && Math.abs(lo) <= 180 ? [la, lo] : null;
+    }
+    const LEADS = [
+      { k: 'cve', label: 'CVE id', test: s => /^CVE-\d{4}-\d{4,}$/i.test(s), ids: ['cve-watch'] },
+      { k: 'cidr', label: 'netblock', test: s => /^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/.test(s) || /^[0-9a-f:]+\/\d{1,3}$/i.test(s), ids: ['cidr-exposure', 'asn-bgp', 'ip-intel'] },
+      { k: 'ip', label: 'IP address', test: s => IP4.test(s) || (s.includes(':') && IP6.test(s)), ids: ['ip-intel', 'ioc-lookup', 'asn-bgp', 'lookup', 'threat-feeds'] },
+      { k: 'asn', label: 'ASN', test: s => /^AS\d{1,10}$/i.test(s), ids: ['asn-bgp', 'ioc-lookup'] },
+      { k: 'hash', label: 'file hash', test: s => /^([a-f0-9]{32}|[a-f0-9]{40}|[a-f0-9]{64})$/i.test(s), ids: ['ioc-lookup', 'threat-feeds'] },
+      { k: 'url', label: 'URL', test: s => /^https?:\/\/\S+$/i.test(s), ids: ['ioc-lookup', 'site-fingerprint', 'web-archive', 'imgmeta'] },
+      { k: 'coord', label: 'coordinates', test: s => !!parseCoord(s), ids: ['map', 'geo-toolkit', 'sun-shadow', 'terrain-view', 'imagery', 'satellite', 'place-photos'] },
+      { k: 'domain', label: 'domain', test: s => /^(?=.{4,253}$)([a-z0-9-]+\.)+[a-z]{2,}$/i.test(s), ids: ['domain-hygiene', 'subdomain-enum', 'lookup', 'site-fingerprint', 'ioc-lookup', 'web-archive'] },
+      { k: 'mmsi', label: 'vessel (MMSI or IMO)', test: s => /^(IMO\s?)?\d{7}$|^\d{9}$/i.test(s), ids: ['ais-vessels'] },
+      { k: 'hex', label: 'aircraft', test: s => /^[a-f0-9]{6}$/i.test(s) || /^(N\d{1,5}[A-Z]{0,2}|[A-Z]{1,2}-[A-Z0-9]{3,5}|[A-Z]{3}\d{1,4}[A-Z]?)$/i.test(s), ids: ['adsb', 'aircraft-registry', 'adsb-history'] },
+      { k: 'name', label: 'name or phrase', test: s => /^[\p{L}\p{N} .,'&-]{3,80}$/u.test(s) && /\p{L}{2}/u.test(s), ids: ['sanctions-screen', 'offshore-leaks', 'corp-registries', 'gdelt-news', 'wiki-intel', 'money-trail'] },
+    ];
+    const classify = s => { s = s.trim(); return s ? LEADS.find(l => l.test(s)) || null : null; };
+    function leadUrl(id, lead, s) {
+      const q = encodeURIComponent(s), base = `/p/${id}/`;
+      if (lead.k === 'coord') { const [la, lo] = parseCoord(s); return `${base}?lat=${la}&lon=${lo}&zoom=12&q=${q}`; }
+      return `${base}?q=${q}`;
+    }
+    function routesFor(lead, s = $('lead').value.trim()) {
+      return lead.ids.map(id => ({ tool: byId.get(`/p/${id}/`), url: leadUrl(id, lead, s) })).filter(r => r.tool);
+    }
+    function openAll(routes, o = {}) {
+      if (!routes.length) return;
+      for (const r of routes) {
+        const base = baseOf(r.url); let t = tabOf(base);
+        if (!t) { t = { base, url: r.url, title: nameFor(base) }; tabs.push(t); }
+        else { t.url = r.url; if (t.frame) { t.busy = true; t.wrap.classList.remove('ready'); t.frame.src = r.url; } }
+        noteRecent(base);
       }
+      openUrl(routes[0].url, o); announce(`Opened ${routes.length} tools`);
+    }
 
-      function section(key, title, tools, opts = {}) {
-        const sec = el('section', 'grp'); sec.dataset.key = key;
-        const open = !collapsed.has(key);
-        const hb = el('button', 'grp-head'); hb.type = 'button'; hb.setAttribute('aria-expanded', String(open)); hb.id = 'gh-' + key.replace(/\W+/g, '_');
-        const live = tools.filter(t => t.status === 'live').length;
-        hb.innerHTML = CHEV; hb.append(el('span', '', title));
-        const cnt = el('span', 'count'); cnt.innerHTML = opts.noCount ? '' : `${tools.length}${live < tools.length ? ` · <b>${live}</b> running` : ''}`; hb.append(cnt);
-        const body = el('div', 'grp-body tools'); body.setAttribute('role', 'group'); body.setAttribute('aria-labelledby', hb.id); body.hidden = !open;
-        const cards = tools.map(t => card(t)); body.append(...cards);
-        hb.onclick = () => { if (filter.value.trim()) return; const now = hb.getAttribute('aria-expanded') !== 'true'; hb.setAttribute('aria-expanded', String(now)); body.hidden = !now; now ? collapsed.delete(key) : collapsed.add(key); store.set('osnt.collapsed', [...collapsed]); };
-        sec.append(hb, body);
-        return { sec, cards, hb, body };
+    /* ---------- command palette ---------- */
+    let palOpen = false, palOpts = [], palSel = 0, palMode = null, palReturn = null;
+    function openPalette(o = {}) {
+      palMode = o.side ? 'side' : o.tabs ? 'tabs' : null; palReturn = document.activeElement;
+      palOpen = true; $('palShield').classList.add('open'); $('pal').classList.add('open');
+      const m = $('palMode'); m.hidden = !palMode; m.textContent = palMode === 'side' ? 'Open to the side' : palMode === 'tabs' ? 'Open tabs' : '';
+      const inp = $('palIn'); inp.value = o.text || ''; palSel = 0; buildPalette(); inp.focus(); inp.select();
+    }
+    function closePalette(restore = true) {
+      if (!palOpen) return; palOpen = false; $('palShield').classList.remove('open'); $('pal').classList.remove('open');
+      if (restore && palReturn && document.contains(palReturn)) palReturn.focus(); else if (restore) $('stage').focus();
+    }
+    function fuzzy(q, name) {
+      let i = 0; for (const ch of name) if (ch === q[i] && ++i === q.length) return true; return false;
+    }
+    function scoreTool(q, t) {
+      const n = t.name.toLowerCase(), id = (t.href || '').split('/')[2] || '', hay = n + ' ' + id + ' ' + (t.description || '').toLowerCase() + ' ' + t.group.toLowerCase();
+      const toks = q.split(/\s+/).filter(Boolean); let s = 0;
+      for (const k of toks) {
+        const words = n.split(/[\s()&/,-]+/);
+        if (n.startsWith(k)) s += 100; else if (words.some(w => w.startsWith(k))) s += 90; else if (id.startsWith(k)) s += 85;
+        else if (n.includes(k)) s += 70; else if (hay.includes(k)) s += 40; else if (k.length >= 3 && fuzzy(k, n)) s += 25; else return 0;
       }
-
-      let sections = [];
-      function render() {
-        root.innerHTML = ''; sections = [];
-        const all = (cfg.grid || []).flatMap(g => (g.tool || []).map(t => ({ ...t, group: g.name })));
-        const byId = new Map(all.filter(t => t.href).map(t => [idOf(t), t]));
-        // Stale ids (a plugin was removed) simply drop out.
-        const favTools = [...favs].map(i => byId.get(i)).filter(Boolean);
-        const recTools = recent.map(i => byId.get(i)).filter(t => t && !favs.has(idOf(t)));
-        if (favTools.length) sections.push(section('~fav', 'Favourites', favTools, { noCount: true }));
-        if (recTools.length) sections.push(section('~recent', 'Recently used', recTools, { noCount: true }));
-        for (const g of cfg.grid || []) {
-          if (!(g.tool || []).length) continue; // a grid with nothing in it yet is not worth a heading
-          sections.push(section(g.name, g.name, g.tool));
+      return s / toks.length;
+    }
+    function hl(node, text, q) {
+      const i = q ? text.toLowerCase().indexOf(q.split(/\s+/)[0]) : -1;
+      if (i < 0 || !q) { node.textContent = text; return; }
+      const k = q.split(/\s+/)[0].length;
+      node.append(document.createTextNode(text.slice(0, i)), Object.assign(el('mark'), { textContent: text.slice(i, i + k) }), document.createTextNode(text.slice(i + k)));
+    }
+    function buildPalette() {
+      const raw = $('palIn').value, q = raw.trim().toLowerCase(), secs = [];
+      const side = palMode === 'side';
+      const toolOpt = (t, hint, extra = {}) => ({ title: t.name, sub: t.description || '', mono: mono(t.name), status: t.status, hint, q, run: o => openUrl(t.href, { side: side || o.side }), ...extra });
+      const tabOpts = () => tabs.map((t, i) => {
+        const where = isSplit() ? (t.base === paneA ? 'left' : t.base === paneB ? 'right' : '') : (view === 'tabs' && t.base === paneA ? 'showing' : '');
+        return { title: t.title, sub: liveUrl(t), mono: mono(t.title), status: toolByBase(t.base)?.status, hint: (where ? where + ' · ' : '') + (i < 9 ? 'Alt+' + (i + 1) : ''), q, run: o => show(t.base, { side: side || o.side }) };
+      }).filter(o => !q || o.title.toLowerCase().includes(q));
+      if (palMode === 'tabs') secs.push(['Open tabs', tabOpts()]);
+      else if (!q) {
+        const t = tabOpts(); if (t.length) secs.push(['Open tabs', t]);
+        const fav = [...favs].map(i => byId.get(i)).filter(Boolean); if (fav.length) secs.push(['Pinned', fav.map(t => toolOpt(t, 'pinned'))]);
+        const rec = recent.map(i => byId.get(i)).filter(t => t && !favs.has(t.id)); if (rec.length) secs.push(['Recent', rec.map(t => toolOpt(t))]);
+        if (!fav.length && !rec.length) secs.push(['Tools', openable().slice(0, 6).map(t => toolOpt(t))]);
+        secs.push(['Commands', commandOpts('')]);
+      } else {
+        // 1. a lead (IP, domain, coords...) pivots to several tools; 2. "adsb N123AB" or "adsb?q=N123AB" jumps with ?q=; 3. fuzzy tool search
+        const lead = classify(raw);
+        const direct = /^\/p\/[a-z0-9-]+\/\S*$/i.exec(raw.trim());
+        if (direct) secs.push(['Go to', [{ title: 'Open ' + direct[0], sub: nameFor(baseOf(direct[0])), mono: '↗', run: o => openUrl(direct[0], { side: side || o.side }) }]]);
+        const jump = /^([a-z0-9-]+)(?:\?|\s+)(.+)$/i.exec(raw.trim());
+        if (jump) {
+          const kw = jump[1].toLowerCase(), arg = jump[2].replace(/^q=/, '').trim();
+          const cands = openable().map(t => ({ t, s: scoreTool(kw, t) })).filter(x => x.s >= 85).sort((a, b) => b.s - a.s).slice(0, 3);
+          const out = cands.map(({ t }) => {
+            const l = classify(arg), url = l && l.k === 'coord' ? leadUrl(t.href.split('/')[2], l, arg) : `${t.href}?q=${encodeURIComponent(arg)}`;
+            return { title: `${t.name} for “${arg}”`, sub: url, mono: mono(t.name), status: t.status, hint: 'deep link', run: o => openUrl(url, { side: side || o.side }) };
+          });
+          if (out.length) secs.push(['Deep link', out]);
         }
-        if (!sections.length) {
-          root.innerHTML = '<div class="state"><div class="h3">No tools configured</div><p>Install plugins from Settings, Packages, or add tool grids to tools.toml on the hub.</p></div>';
-          bar.hidden = true;
-        } else { bar.hidden = false; root.append(...sections.map(s => s.sec)); }
-        const none = el('div', 'state'); none.id = 'none'; none.hidden = true; none.append(el('div', 'h3', 'No tools match'), el('p')); root.append(none);
-        root.setAttribute('aria-busy', 'false');
-        const total = all.length, live = all.filter(t => t.status === 'live' && t.href).length, off = all.filter(t => t.status === 'offline').length, planned = total - live - off;
-        status.textContent = off ? `${live} running · ${off} not running` : `${live} running`;
-        summary.textContent = `${live} tool${live === 1 ? ' is' : 's are'} running on this hub` + (off ? `, ${off} installed but not responding` : '') + (planned ? `, ${planned} planned` : '') + '.';
-        applyFilter();
-      }
-
-      function applyFilter() {
-        const q = filter.value.trim().toLowerCase(); let shown = 0;
-        for (const s of sections) {
-          let any = 0;
-          for (const c of s.cards) { const m = !q || c.firstChild.dataset.q.includes(q); c.hidden = !m; if (m) any++; }
-          s.sec.hidden = !!q && !any; shown += any;
-          // While searching, every group with a hit is shown open, without touching the saved collapse state.
-          if (q) { s.body.hidden = !any; } else { s.body.hidden = s.hb.getAttribute('aria-expanded') !== 'true'; }
+        if (lead && lead.k !== 'name') {
+          const routes = routesFor(lead, raw.trim()), items = [];
+          if (routes.length > 1) items.push({ title: `Open all ${routes.length} for this ${lead.label}`, sub: routes.map(r => r.tool.name).join(', '), mono: '⇉', icon: 'route', hint: 'tabs', run: o => openAll(routes, { side: side || o.side }) });
+          for (const r of routes) items.push({ title: r.tool.name, sub: r.url, mono: mono(r.tool.name), status: r.tool.status, hint: 'with this ' + lead.k, run: o => openUrl(r.url, { side: side || o.side }) });
+          if (items.length) secs.push([`${lead.label[0].toUpperCase() + lead.label.slice(1)} · pivot`, items]);
         }
-        const none = document.getElementById('none');
-        if (none) { none.hidden = !q || shown > 0; none.querySelector('p').textContent = `Nothing matches “${filter.value.trim()}”. Try a shorter word, such as a place, a data source or a kind of record.`; }
+        const found = openable().map(t => ({ t, s: scoreTool(q, t) })).filter(x => x.s > 0).sort((a, b) => b.s - a.s || a.t.name.localeCompare(b.t.name)).slice(0, 9);
+        if (found.length) secs.push(['Tools', found.map(({ t }) => toolOpt(t, tabOf(t.href) ? 'open' : t.group))]);
+        const cmds = commandOpts(q); if (cmds.length) secs.push(['Commands', cmds]);
+        if (lead && lead.k === 'name') {
+          const routes = routesFor(lead, raw.trim());
+          if (routes.length) secs.push([`Search “${raw.trim()}” in`, routes.map(r => ({ title: r.tool.name, sub: r.url, mono: mono(r.tool.name), status: r.tool.status, hint: 'with this text', run: o => openUrl(r.url, { side: side || o.side }) }))]);
+        }
       }
-
-      async function load() {
-        root.setAttribute('aria-busy', 'true');
-        try {
-          const r = await fetch('/api/tools');
-          if (r.status === 401) { location.href = '/login'; return; }
-          if (!r.ok) throw new Error('The hub answered ' + r.status + '.');
-          const next = await r.json(), sig = JSON.stringify(next);
-          if (loadedOnce && sig === lastSig) { root.setAttribute('aria-busy', 'false'); return; }
-          cfg = next; lastSig = sig;
-        } catch (e) { if (loadedOnce) return; /* keep the last good list on screen during a background refresh */ fail(e && e.message && !/fetch|JSON|Load failed/i.test(e.message) ? e.message : 'The hub did not respond. Check that it is running and reachable.'); return; }
-        loadedOnce = true; render(); filter.disabled = false;
+      palOpts = [];
+      const list = $('palList'); list.replaceChildren();
+      let n = 0;
+      for (const [title, items] of secs) {
+        if (!items.length) continue;
+        const h = el('li', 'wb-pal-h', title); h.setAttribute('role', 'presentation'); list.append(h);
+        for (const it of items) {
+          const li = el('li', 'wb-pal-o' + (it.cmd ? ' cmd' : '')); li.id = 'po' + n; li.setAttribute('role', 'option'); li.setAttribute('aria-selected', 'false');
+          const m = el('span', 'wb-mono'); if (it.icon || it.cmd) m.append(svg(ICON[it.icon || it.cmd])); else m.textContent = it.mono;
+          const tx = el('span', 'tx'), ti = el('span', 'ti'); hl(ti, it.title, it.q); tx.append(ti, el('span', 'su', it.sub || ''));
+          li.append(m, tx);
+          if (it.status) { const d = el('span', 'dot ' + (it.status === 'live' ? 'ok' : it.status === 'offline' ? 'warn' : 'off')); d.setAttribute('role', 'img'); d.setAttribute('aria-label', it.status === 'live' ? 'Running' : 'Not running'); li.append(d); }
+          if (it.hint) li.append(el('span', 'hint', it.hint));
+          const idx = n; li.addEventListener('click', e => runOpt(idx, { side: e.shiftKey })); li.addEventListener('pointermove', () => { if (palSel !== idx) selectOpt(idx, false); });
+          list.append(li); palOpts.push(it); n++;
+        }
       }
+      if (!n) { const e = el('li', 'wb-pal-empty', q ? `Nothing for “${raw.trim()}”. Try a tool name, an IP, a domain or coordinates.` : 'No tools yet.'); e.setAttribute('role', 'presentation'); list.append(e); }
+      palSel = Math.min(palSel, Math.max(0, n - 1)); selectOpt(palSel, false, true);
+    }
+    function selectOpt(i, scroll = true) {
+      palSel = i; const items = $('palList').querySelectorAll('[role=option]');
+      items.forEach((o, k) => o.setAttribute('aria-selected', String(k === i)));
+      const cur = items[i]; $('palIn').setAttribute('aria-activedescendant', cur ? cur.id : '');
+      if (cur && scroll) cur.scrollIntoView({ block: 'nearest' });
+    }
+    function runOpt(i, o = {}) { const it = palOpts[i]; if (!it) return; closePalette(false); const r = it.run(o); if (r === 'keep') return; }
+    function commandOpts(q) {
+      const cmds = [
+        { title: 'Overview', sub: 'Pinned, recent and every tool', cmd: 'home', hint: 'Alt+0', run: () => showHome() },
+        { title: isSplit() ? 'Close split view' : 'Open split view', sub: 'Two tools side by side', cmd: 'split', hint: MOD + '+\\', run: () => toggleSplit() },
+        { title: 'Reload current tool', sub: 'Keeps your other tabs untouched', cmd: 'reload', run: () => reloadCurrent(), when: () => !!focusedKey() },
+        { title: 'Close current tab', sub: '', cmd: 'x', hint: 'Alt+W', run: () => closeTab(focusedKey()), when: () => !!focusedKey() },
+        { title: 'Close all tabs', sub: 'Frames are discarded', cmd: 'x', run: () => closeAll(), when: () => tabs.length > 1 },
+        { title: effectiveTheme() === 'dark' ? 'Light theme' : 'Dark theme', sub: 'Applies to every open tool', cmd: effectiveTheme() === 'dark' ? 'sun' : 'moon', run: () => setTheme(effectiveTheme() === 'dark' ? 'light' : 'dark') },
+        { title: 'Toggle sidebar', sub: '', cmd: 'split', hint: MOD + '+B', run: () => toggleRail() },
+        { title: 'Settings', sub: 'API keys and packages', cmd: 'cmd', run: () => { location.href = '/settings'; } },
+      ];
+      return cmds.filter(c => (!c.when || c.when()) && (!q || c.title.toLowerCase().includes(q) || fuzzy(q, c.title.toLowerCase())));
+    }
+    $('palIn').addEventListener('input', () => { palSel = 0; buildPalette(); });
+    $('palIn').addEventListener('keydown', e => {
+      const n = palOpts.length;
+      if (e.key === 'ArrowDown') { e.preventDefault(); selectOpt(n ? (palSel + 1) % n : 0); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); selectOpt(n ? (palSel - 1 + n) % n : 0); }
+      else if (e.key === 'Home' && e.ctrlKey) { e.preventDefault(); selectOpt(0); }
+      else if (e.key === 'Enter') { e.preventDefault(); runOpt(palSel, { side: e.shiftKey }); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closePalette(); }
+      else if (e.key === 'Tab') { e.preventDefault(); selectOpt(n ? (palSel + (e.shiftKey ? -1 : 1) + n) % n : 0); } // focus stays in the dialog
+    });
+    $('palShield').addEventListener('click', () => closePalette());
 
-      filter.addEventListener('input', applyFilter);
-      filter.addEventListener('keydown', e => {
-        if (e.key === 'Enter') { const a = visibleCards().find(c => c.firstChild.tagName === 'A'); if (a) { noteRecent(idOf({ href: a.firstChild.getAttribute('href') })); location.href = a.firstChild.href; } }
-        if (e.key === 'ArrowDown') { e.preventDefault(); visibleCards()[0]?.firstChild.focus(); }
+    /* ---------- global keys (also forwarded from inside plugin frames) ---------- */
+    function inField(e) { const t = e.target; const tag = t?.tagName; return /^(INPUT|TEXTAREA|SELECT)$/.test(tag) || t?.isContentEditable; }
+    function onKey(e) {
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && !e.altKey && e.key.toLowerCase() === 'k') { e.preventDefault(); palOpen ? closePalette() : openPalette(); return; }
+      if (e.key === '/' && !mod && !e.altKey && !inField(e) && !palOpen) { e.preventDefault(); openPalette(); return; }
+      if (e.key === 'Escape') { if (palOpen) closePalette(); else if (document.body.classList.contains('rail-open')) closeDrawer(); return; }
+      if (palOpen) return;
+      if (mod && !e.altKey && e.key === '\\') { e.preventDefault(); toggleSplit(); return; }
+      if (mod && !e.altKey && e.key.toLowerCase() === 'b' && !inField(e)) { e.preventDefault(); toggleRail(); return; }
+      if (e.altKey && !mod) {
+        const d = /^Digit(\d)$/.exec(e.code);
+        if (d) { e.preventDefault(); const n = +d[1]; if (n === 0) showHome(); else if (tabs[n - 1]) show(tabs[n - 1].base); return; }
+        if (e.code === 'KeyW') { const k = focusedKey(); if (k) { e.preventDefault(); closeTab(k); } return; }
+        if (e.code === 'BracketLeft') { e.preventDefault(); cycle(-1); return; }
+        if (e.code === 'BracketRight') { e.preventDefault(); cycle(1); return; }
+      }
+    }
+    document.addEventListener('keydown', onKey);
+
+    // tab strip: roving focus, arrows, Delete closes
+    $('tablist').addEventListener('keydown', e => {
+      const items = [...$('tablist').querySelectorAll('[role=tab]')], i = items.indexOf(document.activeElement); if (i < 0) return;
+      let n = null;
+      if (e.key === 'ArrowRight') n = items[(i + 1) % items.length]; else if (e.key === 'ArrowLeft') n = items[(i - 1 + items.length) % items.length];
+      else if (e.key === 'Home') n = items[0]; else if (e.key === 'End') n = items[items.length - 1];
+      else if (e.key === 'Delete' || e.key === 'Backspace') { const k = items[i].dataset.key; if (k) { e.preventDefault(); closeTab(k); } return; }
+      else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); items[i].click(); return; }
+      if (n) { e.preventDefault(); n.focus(); n.click(); }
+    });
+
+    /* ---------- split handle ---------- */
+    (() => {
+      const h = $('handle'), stage = $('stage'); let shield = null;
+      const setRatio = r => { ratio = Math.max(25, Math.min(75, r)); stage.style.setProperty('--split', ratio + '%'); h.setAttribute('aria-valuenow', String(Math.round(ratio))); };
+      h.addEventListener('pointerdown', e => {
+        e.preventDefault(); h.classList.add('drag'); shield = el('div', 'wb-shield'); document.body.append(shield); shield.setPointerCapture?.(e.pointerId);
+        const move = ev => { const b = stage.getBoundingClientRect(); setRatio((ev.clientX - b.left) / b.width * 100); };
+        const up = () => { shield.removeEventListener('pointermove', move); shield.removeEventListener('pointerup', up); shield.removeEventListener('pointercancel', up); shield.remove(); h.classList.remove('drag'); save(); };
+        shield.addEventListener('pointermove', move); shield.addEventListener('pointerup', up); shield.addEventListener('pointercancel', up);
       });
-      document.getElementById('expand').onclick = () => { collapsed.clear(); store.set('osnt.collapsed', []); render(); };
-      document.getElementById('collapse').onclick = () => { collapsed = new Set(sections.map(s => s.sec.dataset.key)); store.set('osnt.collapsed', [...collapsed]); render(); };
-
-      const visibleCards = () => sections.flatMap(s => s.sec.hidden || s.body.hidden ? [] : s.cards.filter(c => !c.hidden));
-      document.addEventListener('keydown', e => {
-        const tag = document.activeElement?.tagName;
-        const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(tag);
-        if ((e.key === '/' && !typing && !e.metaKey && !e.ctrlKey && !e.altKey) || ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k')) { e.preventDefault(); filter.focus(); filter.select(); return; }
-        if (e.key === 'Escape' && document.activeElement === filter) { filter.value = ''; applyFilter(); filter.blur(); return; }
-        // Arrow keys move between cards by position on screen.
-        const cur = document.activeElement?.closest?.('.cardwrap'); if (!cur || !['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
-        const cards = visibleCards(); const i = cards.indexOf(cur); if (i < 0) return;
-        const r = cur.getBoundingClientRect(); let next = null;
-        if (e.key === 'ArrowRight') next = cards[i + 1]; else if (e.key === 'ArrowLeft') next = cards[i - 1];
-        else {
-          const dir = e.key === 'ArrowDown' ? 1 : -1; let best = Infinity;
-          for (const c of cards) { const b = c.getBoundingClientRect(); const dy = (b.top - r.top) * dir; if (dy < 8) continue; const score = dy * 4 + Math.abs(b.left - r.left); if (score < best) { best = score; next = c; } }
-          if (!next && dir < 0) { filter.focus(); e.preventDefault(); return; }
-        }
-        if (next) { e.preventDefault(); next.firstChild.focus(); next.scrollIntoView({ block: 'nearest' }); }
+      h.addEventListener('keydown', e => {
+        const d = { ArrowLeft: -2, ArrowRight: 2 }[e.key];
+        if (d) { e.preventDefault(); setRatio(ratio + d); save(); } else if (e.key === 'Home' || e.key === 'Enter') { e.preventDefault(); setRatio(50); save(); }
       });
-
-      load();
-      // Keep running/not-running current without a reload (the hub is cheap to ask).
-      setInterval(() => { if (!document.hidden && loadedOnce) load(); }, 30000);
-      document.addEventListener('visibilitychange', () => { if (!document.hidden && loadedOnce) load(); });
+      h.addEventListener('dblclick', () => { setRatio(50); save(); });
+      // pane header buttons
+      stage.addEventListener('click', e => {
+        const b = e.target.closest?.('[data-act]'); if (!b) return;
+        const key = b.closest('.wb-frame')?.dataset.key;
+        if (b.dataset.act === 'unsplit') { split = false; focus = 'a'; if (key === paneA && paneB) paneA = paneB; paneB = null; render(); save(); }
+        else if (b.dataset.act === 'swap') { [paneA, paneB] = [paneB, paneA]; focus = focus === 'a' ? 'b' : 'a'; paint(); save(); }
+        else if (b.dataset.act === 'reload') { const t = tabOf(key); if (t?.frame) { t.busy = true; t.wrap.classList.remove('ready'); try { t.frame.contentWindow.location.reload(); } catch { t.frame.src = t.frame.src; } paint(); } }
+      });
     })();
+
+    /* ---------- rail + phone drawer ---------- */
+    function toggleRail() {
+      if (phoneMQ.matches) { document.body.classList.contains('rail-open') ? closeDrawer() : openDrawer(); return; }
+      const min = !document.body.classList.contains('rail-min'); document.body.classList.toggle('rail-min', min);
+      $('railToggle').setAttribute('aria-pressed', String(min)); $('railToggle').setAttribute('aria-label', min ? 'Expand sidebar' : 'Collapse sidebar'); store.set('osnt.wb.rail', min);
+    }
+    function openDrawer() { document.body.classList.add('rail-open'); $('bbTools').setAttribute('aria-expanded', 'true'); $('rail').querySelector('a,button')?.focus(); }
+    function closeDrawer() { if (!document.body.classList.contains('rail-open')) return; document.body.classList.remove('rail-open'); $('bbTools').setAttribute('aria-expanded', 'false'); }
+    $('railToggle').onclick = toggleRail; $('scrim').onclick = closeDrawer;
+    $('markBtn').onclick = () => { closeDrawer(); showHome(); };
+    $('cmdBtn').onclick = () => { closeDrawer(); openPalette(); };
+    $('themeBtn').onclick = () => setTheme(effectiveTheme() === 'dark' ? 'light' : 'dark');
+    $('bbHome').onclick = () => { closeDrawer(); showHome(); };
+    $('bbTools').onclick = () => document.body.classList.contains('rail-open') ? closeDrawer() : openDrawer();
+    $('bbSearch').onclick = () => { closeDrawer(); openPalette(); };
+    $('bbTabs').onclick = () => { closeDrawer(); openPalette({ tabs: true }); };
+    $('splitBtn').onclick = toggleSplit; $('reloadBtn').onclick = reloadCurrent;
+    $('popBtn').onclick = () => { const t = tabOf(focusedKey()); if (t) window.open(liveUrl(t), '_blank', 'noopener'); };
+    $('cmdKey').textContent = MOD === 'Ctrl' ? 'Ctrl K' : '⌘ K'; $('ledeKey').textContent = $('cmdKey').textContent;
+    document.querySelectorAll('.mk').forEach(k => { k.textContent = MOD; });
+    phoneMQ.addEventListener?.('change', () => { closeDrawer(); render(); });
+
+    /* ---------- overview input ---------- */
+    const lead = $('lead');
+    lead.addEventListener('input', renderHome);
+    lead.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && lead.value) { lead.value = ''; renderHome(); e.stopPropagation(); return; }
+      if (e.key !== 'Enter') return;
+      const l = classify(lead.value), routes = l ? routesFor(l) : [];
+      if (routes.length && l.k !== 'name') { openAll(routes, { side: e.shiftKey && !phoneMQ.matches }); return; }
+      const q = lead.value.trim().toLowerCase(); const t = openable().map(t => ({ t, s: scoreTool(q, t) })).filter(x => x.s > 0).sort((a, b) => b.s - a.s)[0];
+      if (t) openUrl(t.t.href, { side: e.shiftKey });
+      else if (q) openPalette({ text: lead.value });
+    });
+    for (const s of SAMPLES) { const b = el('button', 'wb-chip'); b.type = 'button'; b.append(el('code', '', s)); b.onclick = () => { lead.value = s; renderHome(); lead.focus(); }; $('samples').append(b); }
+    $('samples').prepend(el('span', 'small faint', 'Try a lead:'));
+
+    /* ---------- hub API (same endpoint, same 401 handling and polling as the old launcher) ---------- */
+    async function load() {
+      try {
+        const r = await fetch('/api/tools');
+        if (r.status === 401) { location.href = '/login'; return; }
+        if (!r.ok) throw new Error('The hub answered ' + r.status + '.');
+        const next = await r.json(), sig = JSON.stringify(next);
+        if (loadedOnce && sig === lastSig) return;
+        lastSig = sig; ingest(next); offline = false;
+      } catch (e) {
+        if (loadedOnce) return; // keep the last good list during a background refresh
+        offline = true; $('summary').textContent = 'Offline'; $('tiles').setAttribute('aria-busy', 'false'); $('tiles').replaceChildren();
+        const s = el('div', 'state error'); s.setAttribute('role', 'alert');
+        s.append(el('div', 'h3', 'Could not load the tool list'), el('p', '', e && e.message && !/fetch|JSON|Load failed/i.test(e.message) ? e.message : 'The hub did not respond. Check that it is running and reachable.'));
+        const b = el('button', 'btn', 'Try again'); b.onclick = () => load(); s.append(b); $('tiles').append(s); return;
+      }
+      loadedOnce = true; lead.disabled = false;
+      for (const t of tabs) { const info = toolByBase(t.base); if (info) { t.title = info.name; if (t.wrap) { t.wrap.querySelector('.wb-pane-head .nm').textContent = info.name; t.wrap.querySelector('.wb-pane-head .wb-mono').textContent = mono(info.name); t.frame.title = info.name; } } }
+      renderStatus(); renderRail(); renderHome(); paint(); $('tiles').setAttribute('aria-busy', 'false');
+    }
+
+    /* ---------- boot ---------- */
+    function restore() {
+      const s = store.get('osnt.wb', null);
+      if (s && Array.isArray(s.tabs)) {
+        tabs = s.tabs.filter(t => t && typeof t.base === 'string' && /^\/p\/[^/?#]+\/$/.test(t.base)).map(t => ({ base: t.base, url: typeof t.url === 'string' && t.url.startsWith(t.base) ? t.url : t.base, title: typeof t.title === 'string' ? t.title : nameFor(t.base) }));
+        const has = k => tabs.some(t => t.base === k);
+        paneA = has(s.a) ? s.a : (tabs[0]?.base || null); paneB = has(s.b) && s.b !== paneA ? s.b : null;
+        split = !!s.split && !!paneB; focus = s.focus === 'b' && split ? 'b' : 'a'; ratio = Math.max(25, Math.min(75, +s.ratio || 50));
+        mru = (Array.isArray(s.mru) ? s.mru : []).filter(has); view = s.view === 'tabs' && paneA ? 'tabs' : 'home';
+      }
+      const rail = store.get('osnt.wb.rail', false); if (rail) { document.body.classList.add('rail-min'); $('railToggle').setAttribute('aria-pressed', 'true'); $('railToggle').setAttribute('aria-label', 'Expand sidebar'); }
+      applyHash(location.hash);
+      paintThemeBtn();
+    }
+    // #/p/a/...|/p/b/... opens a (split) workspace; used on load and when someone pastes a link into this tab.
+    function applyHash(hash) {
+      const parts = decodeURIComponent(hash.slice(1)).split('|').filter(u => /^\/p\/[^/?#]+\//.test(u)).slice(0, 2); if (!parts.length) return false;
+      const keys = parts.map(u => {
+        const base = baseOf(u); let t = tabOf(base);
+        if (!t) { t = { base, url: u, title: nameFor(base) }; tabs.push(t); } else if (u !== base || !t.frame) t.url = u;
+        if (t.frame && u !== base && u !== liveUrl(t)) { t.busy = true; t.wrap.classList.remove('ready'); t.frame.src = u; }
+        return base;
+      });
+      paneA = keys[0]; view = 'tabs'; focus = 'a';
+      if (keys[1] && keys[1] !== keys[0] && !phoneMQ.matches) { paneB = keys[1]; split = true; touch(keys[1]); } else if (!split || paneB === paneA) { split = false; }
+      touch(keys[0]); return true;
+    }
+    window.addEventListener('hashchange', () => { const cur = '#' + liveUrl(tabOf(paneA) || {}) + (isSplit() ? '|' + liveUrl(tabOf(paneB)) : ''); if (view === 'tabs' && decodeURIComponent(location.hash) === cur) return; if (applyHash(location.hash)) { render(); save(); } });
+    window.addEventListener('pagehide', save); document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+    setInterval(() => { if (tabs.length && !document.hidden) save(); }, 10000);
+    restore(); render(); load();
+    setInterval(() => { if (!document.hidden && loadedOnce) load(); }, 30000); // keep running/not-running current without a reload
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && loadedOnce) load(); });
+  })();
   </script>
 </body>
 </html>
