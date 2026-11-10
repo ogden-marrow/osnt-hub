@@ -1,0 +1,375 @@
+{
+ "grid": [
+  {
+   "name": "Investigation",
+   "tool": [
+    {
+     "name": "Case notebook",
+     "description": "Investigation cases with Markdown notes, a dated timeline and a tamper-evident evidence log; other plugins can pin results into a case.",
+     "href": "/p/case-notebook/",
+     "status": "live"
+    },
+    {
+     "name": "Link graph",
+     "description": "Maltego-style entity graph for domains, IPs, ASNs, organisations, vessels, aircraft, places and more. No person, username, email or phone nodes.",
+     "href": "/p/link-graph/",
+     "status": "live"
+    }
+   ]
+  },
+  {
+   "name": "Geospatial",
+   "tool": [
+    {
+     "name": "Live cameras",
+     "description": "Grid of live still-image camera feeds with map placement.",
+     "href": "/p/cameras/",
+     "status": "offline"
+    },
+    {
+     "name": "Coordinates & geodesy",
+     "description": "Convert coordinates between decimal, DMS, UTM, MGRS, geohash, Plus Codes and Maidenhead; geodesic distance, bearing and destination; circle, box and grid generators; GeoJSON clean-up with KML/GPX export; find coordinates in pasted text.",
+     "href": "/p/geo-toolkit/",
+     "status": "live"
+    },
+    {
+     "name": "Imagery timeline",
+     "description": "Compare NASA satellite imagery across dates, with fire and thermal detections.",
+     "href": "/p/imagery/",
+     "status": "live"
+    },
+    {
+     "name": "Map",
+     "description": "Base maps, satellite, terrain and elevation layers streamed on demand.",
+     "href": "/p/map/",
+     "status": "live"
+    },
+    {
+     "name": "Disaster imagery (Maxar Open Data)",
+     "description": "Browse Maxar's free event imagery for disasters and crises, and compare acquisitions before and after.",
+     "href": "/p/opendata/",
+     "status": "live"
+    },
+    {
+     "name": "OSM feature finder",
+     "description": "Find OpenStreetMap features (towers, bridges, rail crossings, fuel stations, military sites) by radius or box, with raw Overpass QL, geocoding, reverse geocoding and recent edits and notes for an area.",
+     "href": "/p/osm-query/",
+     "status": "live"
+    },
+    {
+     "name": "Place photos",
+     "description": "Geotagged photos and articles near a coordinate (Wikimedia Commons, Wikipedia) and optional street-level coverage (Mapillary), to compare a claimed location with what is there.",
+     "href": "/p/place-photos/",
+     "status": "live"
+    },
+    {
+     "name": "Satellite scenes",
+     "description": "Search Sentinel-2, Sentinel-1 radar, Landsat and NAIP scenes by area, date and cloud cover, and view or compare them on the map.",
+     "href": "/p/satellite/",
+     "status": "live"
+    },
+    {
+     "name": "Sun & shadow check",
+     "description": "Sun azimuth and altitude, shadow length and direction, time of day from a shadow, candidate locations from a shadow (ShadowFinder-style) and a weather cross-check.",
+     "href": "/p/sun-shadow/",
+     "status": "live"
+    },
+    {
+     "name": "Terrain & horizon",
+     "description": "Elevation at a point, elevation profile, line of sight with Earth curvature, horizon silhouette and a visible-from-here map, from decoded Terrarium elevation tiles.",
+     "href": "/p/terrain-view/",
+     "status": "live"
+    },
+    {
+     "name": "Imagery history (Wayback)",
+     "description": "Step through dated releases of Esri World Imagery to see how a place changed, and compare two dates side by side.",
+     "href": "/p/wayback/",
+     "status": "live"
+    }
+   ]
+  },
+  {
+   "name": "Air & Sea",
+   "tool": [
+    {
+     "name": "Aircraft history (ADS-B)",
+     "description": "Pull just the window you need out of adsb.lol's daily global ADS-B archive (time, area, ICAO hex, callsign), keep it as a short-lived slice, and serve it as an API for other plugins.",
+     "href": "/p/adsb-history/",
+     "status": "live"
+    },
+    {
+     "name": "Aircraft (ADS-B)",
+     "description": "Live aircraft, military traffic and emergency squawks, with a recorded position history.",
+     "href": "/p/adsb/",
+     "status": "live"
+    },
+    {
+     "name": "Aircraft registry & routes",
+     "description": "ICAO hex or tail number to type, manufacturer and organisation owner (private owners are never named), callsign to airline and route, airports, type designators, and a position cross-check across adsb.lol and OpenSky. Also an API for other plugins.",
+     "href": "/p/aircraft-registry/",
+     "status": "live"
+    },
+    {
+     "name": "Vessels (AIS)",
+     "description": "Live ship positions and particulars by MMSI, IMO or name: Finland's Digitraffic AIS (Baltic) with no key, optional AISStream.io worldwide feed and Global Fishing Watch events. Vessels as objects only.",
+     "href": "/p/ais-vessels/",
+     "status": "live"
+    },
+    {
+     "name": "Maritime warnings",
+     "description": "Active navigational and broadcast warnings (NGA MSI) by NAVAREA, with the positions in each warning drawn on the map: rocket debris areas, naval exercises, hazards. Piracy reports where NGA serves them.",
+     "href": "/p/maritime-notices/",
+     "status": "live"
+    },
+    {
+     "name": "Trains (live)",
+     "description": "Live train positions and station boards from Finland (Digitraffic) and Norway (Entur), with an OpenRailwayMap track overlay. Trains as objects only.",
+     "href": "/p/rail-live/",
+     "status": "offline"
+    }
+   ]
+  },
+  {
+   "name": "Network & Infrastructure",
+   "tool": [
+    {
+     "name": "ASN & BGP explorer",
+     "description": "Autonomous systems: holder, announced prefixes, upstream and downstream neighbours, route history and BGP state, PeeringDB and RIPE Atlas counts.",
+     "href": "/p/asn-bgp/",
+     "status": "live"
+    },
+    {
+     "name": "Domain hygiene",
+     "description": "Scored checklist for a domain: DNS records, SPF/DMARC/DKIM/MTA-STS, DNSSEC, delegation, CAA and security.txt.",
+     "href": "/p/domain-hygiene/",
+     "status": "live"
+    },
+    {
+     "name": "IP intelligence",
+     "description": "One IP or hostname: owner, routing, exposed ports, geolocation cross-check and blocklist membership, from open sources.",
+     "href": "/p/ip-intel/",
+     "status": "live"
+    },
+    {
+     "name": "Domain & IP lookup",
+     "description": "DNS, registration (RDAP), reverse DNS and certificate-transparency names.",
+     "href": "/p/lookup/",
+     "status": "live"
+    },
+    {
+     "name": "Site fingerprint",
+     "description": "Fingerprint one URL: redirect chain, server and technology hints, security-header scorecard, cookie flags, robots and sitemap, favicon hash and TLS certificate chain.",
+     "href": "/p/site-fingerprint/",
+     "status": "live"
+    },
+    {
+     "name": "Subdomain discovery",
+     "description": "Passive subdomain discovery from certificate logs, passive DNS and web archives, with DNS liveness and dangling-CNAME flags.",
+     "href": "/p/subdomain-enum/",
+     "status": "live"
+    }
+   ]
+  },
+  {
+   "name": "Threat Intel",
+   "tool": [
+    {
+     "name": "Netblock exposure",
+     "description": "Passive exposure summary for a small IPv4 block (up to /22): open ports, products, CVEs and hostnames per address from Shodan InternetDB, as a heatmap. Sends nothing to the targets.",
+     "href": "/p/cidr-exposure/",
+     "status": "live"
+    },
+    {
+     "name": "Vulnerability watch",
+     "description": "CVE lookup merged from NVD, CISA KEV, EPSS, MITRE and OSV/GitHub advisories, with a recent-KEV feed, search and a product watchlist.",
+     "href": "/p/cve-watch/",
+     "status": "live"
+    },
+    {
+     "name": "IOC reputation lookup",
+     "description": "One IP, domain, URL or hash fanned out to urlscan, OTX, GreyNoise, mnemonic passive DNS, InternetDB and (with keys) VirusTotal and AbuseIPDB, one verdict per source.",
+     "href": "/p/ioc-lookup/",
+     "status": "live"
+    },
+    {
+     "name": "Threat feeds",
+     "description": "Is this IP, network, domain, URL or hash on an open blocklist (Feodo, Spamhaus DROP, IPsum, Tor exits, OpenPhish, abuse.ch)? Shows since when and how fresh each feed is.",
+     "href": "/p/threat-feeds/",
+     "status": "live"
+    }
+   ]
+  },
+  {
+   "name": "Organisations",
+   "tool": [
+    {
+     "name": "Company registries",
+     "description": "Search company registers (GLEIF, Wikidata, Norway, Czechia, Finland, Denmark, optional UK/OpenCorporates/Aleph) and see ownership links. Companies only.",
+     "href": "/p/corp-registries/",
+     "status": "live"
+    },
+    {
+     "name": "Public funds",
+     "description": "Where public money goes: US contracts and grants, nonprofit Form 990 totals, federal lobbying filings and EU tenders, by organisation.",
+     "href": "/p/money-trail/",
+     "status": "live"
+    },
+    {
+     "name": "Offshore Leaks",
+     "description": "Search ICIJ's Offshore Leaks database for companies, trusts and foundations: jurisdiction, status, source leak and a map. No individuals.",
+     "href": "/p/offshore-leaks/",
+     "status": "live"
+    },
+    {
+     "name": "Sanctions screening",
+     "description": "Fuzzy name search over official sanctions lists (OFAC, EU, UN, UK, US CSL, SECO, BIS) for companies, vessels and aircraft.",
+     "href": "/p/sanctions-screen/",
+     "status": "live"
+    },
+    {
+     "name": "SEC filings",
+     "description": "US-listed companies at SEC EDGAR: profile, filing timeline, annual XBRL figures and subsidiary-list links.",
+     "href": "/p/sec-edgar/",
+     "status": "live"
+    },
+    {
+     "name": "Court filings index",
+     "description": "Planned: public docket search across jurisdictions.",
+     "status": "planned"
+    }
+   ]
+  },
+  {
+   "name": "Events & News",
+   "tool": [
+    {
+     "name": "Conflict events",
+     "description": "Georeferenced armed-conflict events from UCDP (free token) and optionally ACLED, on a map with timeline and event-type breakdown.",
+     "href": "/p/conflict-events/",
+     "status": "live"
+    },
+    {
+     "name": "Global news monitor (GDELT)",
+     "description": "Search worldwide news coverage with volume and tone timelines, the latest GDELT export files, and saved stories that flag volume spikes.",
+     "href": "/p/gdelt-news/",
+     "status": "live"
+    },
+    {
+     "name": "Feed watcher",
+     "description": "Poll your own RSS/Atom feeds, Hacker News keyword alerts and opt-in public Telegram channel previews, with keyword and regex alerts and a new-since-last-visit inbox.",
+     "href": "/p/rss-watch/",
+     "status": "live"
+    },
+    {
+     "name": "Wikipedia event watch",
+     "description": "Wikipedia On this day and current events, page-view spike detection and live change notices for watched topics, and Wikidata facts for organisations, places and events.",
+     "href": "/p/wiki-intel/",
+     "status": "live"
+    }
+   ]
+  },
+  {
+   "name": "Hazards",
+   "tool": [
+    {
+     "name": "Fire watch",
+     "description": "Active-fire detections as clusters with FRP statistics, daily trends and area watches that flag new fires.",
+     "href": "/p/fire-watch/",
+     "status": "live"
+    },
+    {
+     "name": "Hazard events",
+     "description": "One map of active disasters: GDACS alerts, NASA EONET, NWS alerts, volcano reports, active storms.",
+     "href": "/p/hazard-events/",
+     "status": "live"
+    },
+    {
+     "name": "Earthquakes & tsunami",
+     "description": "Recent and historical earthquakes (USGS, EMSC) on a map, plus live PTWC/NTWC tsunami bulletins.",
+     "href": "/p/quake-tsunami/",
+     "status": "live"
+    },
+    {
+     "name": "Launches & orbital objects",
+     "description": "Upcoming and past rocket launches with a pad map, and CelesTrak orbital elements and catalog data by name, NORAD ID or group.",
+     "href": "/p/space-watch/",
+     "status": "live"
+    },
+    {
+     "name": "Volcano ash advisories",
+     "description": "Planned: VAAC advisories on the map.",
+     "status": "planned"
+    }
+   ]
+  },
+  {
+   "name": "Media & Verification",
+   "tool": [
+    {
+     "name": "Doppler flyby check",
+     "description": "Estimate speed, closest approach and distance of an aircraft or vehicle pass from the Doppler shift in a recording, to sanity-check a clip's claims.",
+     "href": "/p/doppler/",
+     "status": "offline"
+    },
+    {
+     "name": "Image forensics",
+     "description": "EXIF, hashes and editing/GPS flags for an image, plus reverse-image-search links.",
+     "href": "/p/imgmeta/",
+     "status": "live"
+    },
+    {
+     "name": "Media verification",
+     "description": "Video keyframes and metadata (ffprobe), YouTube thumbnail frames, perceptual-hash comparison, error-level analysis and a Content Credentials (C2PA) reader. No face or person matching.",
+     "href": "/p/media-verify/",
+     "status": "live"
+    },
+    {
+     "name": "Image source finder",
+     "description": "Agentic search for the likely original source of an image: reverse-image search, page dates and Wayback, with honest confidence and caveats.",
+     "href": "/p/provenance/",
+     "status": "live"
+    },
+    {
+     "name": "Web archives",
+     "description": "Internet Archive snapshots per URL, snapshot text diffs, domain URL harvest, Common Crawl lookups and an archive-and-record evidence capture.",
+     "href": "/p/web-archive/",
+     "status": "live"
+    },
+    {
+     "name": "YouTube to MP3",
+     "description": "Paste a YouTube link, optionally trim it, and download an MP3.",
+     "href": "/p/yt-mp3/",
+     "status": "live"
+    }
+   ]
+  },
+  {
+   "name": "Tools",
+   "tool": [
+    {
+     "name": "Example plugin",
+     "description": "Minimal starting point for writing a plugin.",
+     "href": "/p/example/",
+     "status": "live"
+    }
+   ]
+  },
+  {
+   "name": "System",
+   "tool": [
+    {
+     "name": "Credentials",
+     "description": "Store API keys on the Pi and hand each one only to the plugins that declare it.",
+     "href": "/p/credentials/",
+     "status": "live"
+    },
+    {
+     "name": "Packages",
+     "description": "Package repositories, and which of their plugins are installed on this hub.",
+     "href": "/p/packages/",
+     "status": "live"
+    }
+   ]
+  }
+ ]
+}

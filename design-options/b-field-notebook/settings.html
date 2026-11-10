@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Settings · OSNT</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%231d4d6e%27 stroke-width=%272.2%27%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%279%27/%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%273.2%27 fill=%27%231d4d6e%27 stroke=%27none%27/%3E%3C/svg%3E">
+  <script src="/static/osnt-theme.js"></script>
+  <link rel="stylesheet" href="/static/osnt-ui.css">
+  <style>
+    .panel { position: relative; flex: 1 1 auto; min-height: 0; background: var(--bg); }
+    iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--bg); color-scheme: normal; }
+    .panel .loading { position: absolute; left: var(--gutter); top: 28px; z-index: 0; }
+    .panel.ready .loading { display: none; }
+  </style>
+</head>
+<body class="fixed">
+  <a class="skip" href="#frame">Skip to settings content</a>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Back to OSNT hub">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/><path d="M12 3v4" stroke-linecap="round"/></svg>
+      OSNT
+    </a>
+    <span class="sep" aria-hidden="true">/</span>
+    <h1>Settings</h1>
+    <div class="bar-end"><button type="button" class="theme-btn" data-theme-toggle aria-label="Switch theme" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path class="half" d="M12 3.5a8.5 8.5 0 0 1 0 17z"/></svg></button><button id="out" class="btn sm ghost">Sign out</button></div>
+  </header>
+  <nav class="tabs" role="tablist" aria-label="Settings sections">
+    <button class="tab" role="tab" id="tab-keys" aria-controls="frame" data-src="/p/credentials/" aria-selected="true" tabindex="0">API keys</button>
+    <button class="tab" role="tab" id="tab-pkgs" aria-controls="frame" data-src="/p/packages/" aria-selected="false" tabindex="-1">Packages</button>
+  </nav>
+  <div class="panel" id="panel">
+    <div class="loading"><span class="spin" aria-hidden="true"></span>Loading…</div>
+    <iframe id="frame" title="Settings content" role="tabpanel"></iframe>
+  </div>
+  <script>
+    const frame = document.getElementById('frame'), panel = document.getElementById('panel');
+    const tabs = [...document.querySelectorAll('[role=tab]')];
+    function show(tab) {
+      tabs.forEach(t => { const on = t === tab; t.setAttribute('aria-selected', String(on)); t.tabIndex = on ? 0 : -1; });
+      frame.setAttribute('aria-labelledby', tab.id);
+      panel.classList.remove('ready');
+      frame.src = tab.dataset.src;
+      try { history.replaceState(null, '', '#' + tab.dataset.src.split('/')[2]); } catch {}
+    }
+    // Links inside a settings page (the "back to OSNT" link) should leave the frame, not nest the portal in it.
+    // Pages inside the frame also drop their own top bar: this shell already carries it.
+    // The chosen theme (data-theme on this page) is mirrored into the frame, so a plugin page follows the switch.
+    const mirrorTheme = () => { try { const d = frame.contentDocument.documentElement, t = document.documentElement.getAttribute('data-theme'); t ? d.setAttribute('data-theme', t) : d.removeAttribute('data-theme'); } catch {} };
+    new MutationObserver(mirrorTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    frame.onload = () => {
+      panel.classList.add('ready'); mirrorTheme();
+      try { const d = frame.contentDocument; d.documentElement.classList.add('embedded'); if (!d.querySelector('base')) { const b = d.createElement('base'); b.target = '_top'; d.head.prepend(b); } } catch {}
+    };
+    tabs.forEach(t => t.onclick = () => show(t));
+    // Arrow keys move between tabs (roving tabindex); Home and End jump to the ends.
+    tabs.forEach((t, i) => t.addEventListener('keydown', e => {
+      const k = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+      if (k === undefined) return;
+      e.preventDefault(); const n = tabs[(k + tabs.length) % tabs.length]; n.focus(); show(n);
+    }));
+    show(tabs.find(t => t.dataset.src.split('/')[2] === location.hash.slice(1)) || tabs[0]);
+    document.getElementById('out').onclick = async () => { await fetch('/auth/logout', { method: 'POST' }); location.href = '/login'; };
+  </script>
+</body>
+</html>

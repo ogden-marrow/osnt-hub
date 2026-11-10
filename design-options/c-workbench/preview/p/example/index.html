@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Example · OSNT</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%230c7a62%27 stroke-width=%272.2%27%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%279%27/%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%273.2%27 fill=%27%230c7a62%27 stroke=%27none%27/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/osnt-ui.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Back to OSNT hub">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/><path d="M12 3v4" stroke-linecap="round"/></svg>
+      OSNT
+    </a>
+    <span class="sep" aria-hidden="true">/</span><h1>Example</h1>
+  </header>
+  <main class="page narrow">
+    <div class="card"><p id="out" class="loading" role="status"><span class="spin" aria-hidden="true"></span>Loading…</p></div>
+  </main>
+  <script>
+    // Use RELATIVE urls: the core mounts this page at /p/<id>/. Shared assets are absolute: /static/osnt-map.js, /static/leaflet/*, /static/osnt-ui.css.
+    fetch('api/hello').then(r => r.json()).then(d => { const o = document.getElementById('out'); o.className = ''; o.textContent = d.message; })
+      .catch(() => { const o = document.getElementById('out'); o.className = 'err'; o.textContent = 'Could not reach the example API.'; });
+  </script>
+</body>
+</html>

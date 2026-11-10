@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>OSNT Hub</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23ff9645%27 stroke-width=%272.2%27%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%279%27/%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%273.2%27 fill=%27%23ff9645%27 stroke=%27none%27/%3E%3C/svg%3E">
+  <script src="/static/osnt-theme.js"></script>
+  <link rel="stylesheet" href="/static/osnt-ui.css">
+  <style>
+    /* Telemetry strip: five readouts, all derived from the tool list. */
+    .telemetry { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); background: var(--surface); border: 1px solid var(--edge); border-radius: var(--radius); margin-bottom: 14px; }
+    .cell { padding: 10px 14px 11px; min-width: 0; }
+    .cell + .cell { border-left: 1px solid var(--edge); }
+    .cell .k { display: block; font: 600 var(--fs-xs)/1.2 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+    .cell .v { display: block; margin-top: 5px; font: 500 24px/1 var(--font-mono); letter-spacing: -.02em; color: var(--ink); }
+    .cell .v small { font-size: 13px; color: var(--ink-3); letter-spacing: 0; }
+    .cell .v.ok { color: var(--ok); } .cell .v.warn { color: var(--warn); } .cell .v.dim { color: var(--ink-3); }
+    .cell .sub { display: block; margin-top: 4px; font: var(--fs-xs)/1.2 var(--font-mono); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .cmd { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-bottom: 14px; }
+    .search { position: relative; flex: 1 1 320px; max-width: 560px; }
+    .search svg { position: absolute; left: 10px; top: 50%; width: 14px; height: 14px; margin-top: -7px; stroke: var(--ink-3); fill: none; stroke-width: 2; pointer-events: none; }
+    .search input { width: 100%; padding-left: 32px; padding-right: 76px; }
+    .search .keys { position: absolute; right: 7px; top: 50%; transform: translateY(-50%); display: flex; gap: 4px; pointer-events: none; }
+    .search input:not(:placeholder-shown) ~ .keys, .search input:focus ~ .keys { display: none; }
+    .cmd .spacer { flex: 1 1 0; }
+
+    .hub { display: grid; grid-template-columns: 188px minmax(0, 1fr); gap: 22px; align-items: start; }
+    .rail { position: sticky; top: calc(var(--bar-h) + 14px); display: flex; flex-direction: column; gap: 1px; max-height: calc(100vh - var(--bar-h) - 28px); overflow: auto; }
+    .rail .cap { margin: 0 0 6px 8px; font: 600 var(--fs-xs)/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+    .rail button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 5px 8px; border: 0; border-left: 2px solid transparent; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; background: none; color: var(--ink-2); font: 500 var(--fs-sm)/1.3 var(--font); text-align: left; cursor: pointer; }
+    .rail button:hover { background: var(--surface-2); color: var(--ink); }
+    .rail button[aria-current="true"] { color: var(--ink); border-left-color: var(--accent); background: var(--surface); }
+    .rail .n { margin-left: auto; font: var(--fs-xs)/1 var(--font-mono); color: var(--ink-3); }
+    .rail .n.warn { color: var(--warn); }
+
+    .grp { margin: 0 0 18px; scroll-margin-top: calc(var(--bar-h) + 12px); }
+    .grp-head { display: flex; align-items: center; gap: 10px; width: 100%; margin: 0 0 8px; padding: 6px 8px; margin-left: -8px; width: calc(100% + 16px); border: 0; background: none; color: var(--ink); font: 650 var(--fs-md)/1.3 var(--font); cursor: pointer; text-align: left; border-radius: var(--radius-sm); }
+    .grp-head:hover { background: var(--surface-2); }
+    .grp-head .chev { width: 13px; height: 13px; flex: none; stroke: var(--ink-3); fill: none; stroke-width: 2; transition: transform var(--t-fast) var(--ease); }
+    .grp-head[aria-expanded="false"] .chev { transform: rotate(-90deg); }
+    .grp-head .count { font: var(--fs-xs)/1 var(--font-mono); color: var(--ink-3); letter-spacing: .02em; }
+    .grp-head .count b { color: var(--warn); font-weight: 600; }
+    .pips { display: inline-flex; gap: 2px; margin-left: auto; align-items: center; }
+    .pips i { width: 5px; height: 12px; background: var(--ok); border-radius: 1px; }
+    .pips i.off { background: var(--warn); } .pips i.plan { background: var(--edge-strong); }
+    .grp-body[hidden] { display: none !important; }
+
+    .tools { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; }
+    .cardwrap { position: relative; min-width: 0; }
+    .cardwrap > .tool { display: flex; flex-direction: column; gap: 3px; height: 100%; min-height: 78px; padding: 10px 38px 9px 12px; }
+    .tool h3 { margin: 0; font-size: var(--fs-md); font-weight: 650; line-height: 1.3; display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .tool h3 .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tool p { margin: 0; font-size: var(--fs-sm); line-height: 1.45; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .tool .meta { margin-top: auto; padding-top: 4px; font: var(--fs-xs)/1 var(--font-mono); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tool.offline { background: transparent; }
+    .tool.offline .meta { color: var(--warn); font-weight: 600; }
+    .tool.planned { background: transparent; border-style: dashed; }
+    .tool.offline h3, .tool.planned h3, .tool.offline p, .tool.planned p { color: var(--ink-3); }
+    .star { position: absolute; top: 5px; right: 5px; width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--ink-3); cursor: pointer; padding: 0; }
+    .star svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+    .star:hover { background: var(--surface-3); color: var(--ink); }
+    .star[aria-pressed="true"] { color: var(--accent); }
+    .star[aria-pressed="true"] svg { fill: currentColor; }
+    .star:not([aria-pressed="true"]) { opacity: 0; }
+    .cardwrap:hover .star, .cardwrap:focus-within .star, .star:focus-visible { opacity: 1; }
+    @media (hover: none) { .star:not([aria-pressed="true"]) { opacity: .7; } }
+
+    /* List view: one row per tool, like a watch list. */
+    .view-list .tools { display: block; border: 1px solid var(--edge); border-radius: var(--radius); background: var(--surface); }
+    .view-list .cardwrap + .cardwrap { border-top: 1px solid var(--edge); }
+    .view-list .tool { flex-direction: row; align-items: center; gap: 14px; min-height: 36px; padding: 6px 44px 6px 12px; border: 0; border-radius: 0; background: transparent; }
+    .view-list .tool h3 { flex: 0 0 210px; }
+    .view-list .tool p { flex: 1 1 0; -webkit-line-clamp: 1; min-width: 0; }
+    .view-list .tool .meta { margin: 0; padding: 0; flex: 0 0 150px; text-align: right; }
+    .view-list a.tile:hover { background: var(--surface-2); }
+    .view-list .tool.planned { border: 0; }
+    .view-list .cardwrap:first-child .tool, .view-list .cardwrap:first-child a.tile:focus-visible { border-radius: var(--radius) var(--radius) 0 0; }
+    .view-list .star { top: 4px; }
+
+    .tool-skel { height: 78px; }
+    .keybar { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 26px; padding-top: 12px; border-top: 1px solid var(--edge); font-size: var(--fs-sm); color: var(--ink-3); }
+    .keybar span { display: inline-flex; align-items: center; gap: 6px; }
+    .status-chip { display: inline-flex; align-items: center; gap: 7px; }
+
+    @media (max-width: 1000px) {
+      .hub { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+      .rail { position: static; flex-direction: row; max-height: none; overflow-x: auto; gap: 6px; padding-bottom: 6px; scrollbar-width: none; }
+      .rail::-webkit-scrollbar { display: none; }
+      .rail .cap { display: none; }
+      .rail button { width: auto; flex: none; border: 1px solid var(--edge); border-radius: var(--radius-sm); padding: 6px 10px; background: var(--surface); }
+      .rail button[aria-current="true"] { border-color: var(--accent); }
+      .telemetry { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .cell:nth-child(n+4) { border-top: 1px solid var(--edge); }
+      .cell:nth-child(4) { border-left: 0; }
+      .keybar { display: none; }
+    }
+    @media (max-width: 640px) {
+      .tools { grid-template-columns: 1fr; }
+      .search { max-width: none; flex-basis: 100%; }
+      .search .keys { display: none; }
+      .cmd .spacer { display: none; }
+      .cell .v { font-size: 20px; }
+      .telemetry { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .cell { padding: 9px 10px 10px; }
+      .cell:nth-child(n+4) { border-top: 0; }
+      .cell:nth-child(4) { border-left: 1px solid var(--edge); }
+      .cell:nth-child(5), .cell .sub { display: none; }
+      .cell .k { font-size: 10px; letter-spacing: .06em; }
+      .cell .v small { display: none; }
+      #grp-seg { display: none; }
+      .tool { min-height: 64px; }
+      .view-list .tool { flex-wrap: wrap; gap: 2px 10px; padding-right: 44px; }
+      .view-list .tool h3 { flex: 1 1 100%; }
+      .view-list .tool p { flex: 1 1 100%; }
+      .view-list .tool .meta { display: none; }
+      .bar-end .status { display: none; }
+      .theme-toggle [data-theme-label] { display: none; }
+      .topbar .crumb, .topbar .sep { display: inline; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#grids">Skip to tools</a>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="OSNT hub home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/><path d="M12 3v4" stroke-linecap="round"/></svg>
+      OSNT
+    </a>
+    <span class="sep" aria-hidden="true">/</span><span class="muted crumb">Hub</span>
+    <div class="bar-end">
+      <span class="status-chip"><span class="dot off" id="pulse" aria-hidden="true"></span><span id="status" class="status" role="status" aria-live="polite">Loading…</span></span>
+      <button type="button" class="theme-toggle" data-theme-toggle><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4v16" /><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg><span data-theme-label>Auto</span></button>
+      <a class="btn sm ghost" href="/settings">Settings</a>
+    </div>
+  </header>
+
+  <main class="page wide">
+    <div class="page-head">
+      <div>
+        <h1>Tools</h1>
+        <p id="summary">Open-source intelligence tools running on this hub.</p>
+      </div>
+    </div>
+
+    <section class="telemetry" id="telemetry" aria-label="Hub status" hidden>
+      <div class="cell"><span class="k">Running</span><span class="v ok" id="t-run">0</span><span class="sub" id="t-run-sub">&nbsp;</span></div>
+      <div class="cell"><span class="k">Not responding</span><span class="v dim" id="t-off">0</span><span class="sub">installed, no answer</span></div>
+      <div class="cell"><span class="k">Planned</span><span class="v dim" id="t-plan">0</span><span class="sub">not built yet</span></div>
+      <div class="cell"><span class="k">Pinned</span><span class="v dim" id="t-fav">0</span><span class="sub" id="t-rec">on this browser</span></div>
+      <div class="cell"><span class="k">UTC</span><span class="v" id="t-clock" style="font-size:20px;line-height:24px">--:--:--</span><span class="sub" id="t-poll">polled --</span></div>
+    </section>
+
+    <div class="cmd" id="bar" hidden>
+      <div class="search" role="search">
+        <label class="sr-only" for="filter">Filter tools</label>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5" stroke-linecap="round"/></svg>
+        <input id="filter" type="search" placeholder="Filter tools by name or purpose" autocomplete="off" disabled>
+        <span class="keys" aria-hidden="true"><kbd>/</kbd><kbd>Ctrl K</kbd></span>
+      </div>
+      <span class="spacer"></span>
+      <div class="seg" role="group" aria-label="Layout">
+        <button type="button" id="vgrid" aria-pressed="true">Grid</button><button type="button" id="vlist" aria-pressed="false">List</button>
+      </div>
+      <div class="seg" id="grp-seg" role="group" aria-label="Groups">
+        <button type="button" id="expand">Expand all</button><button type="button" id="collapse">Collapse all</button>
+      </div>
+    </div>
+
+    <div class="hub" id="hub">
+      <nav class="rail" id="rail" aria-label="Groups" hidden><div class="cap">Groups</div></nav>
+      <div id="grids" aria-live="polite" aria-busy="true">
+        <div class="tools"><div class="skeleton tool-skel"></div><div class="skeleton tool-skel"></div><div class="skeleton tool-skel"></div><div class="skeleton tool-skel"></div></div>
+      </div>
+    </div>
+
+    <div class="keybar" aria-label="Keyboard shortcuts">
+      <span><kbd>/</kbd> or <kbd>Ctrl K</kbd> search</span>
+      <span><kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&larr;</kbd><kbd>&rarr;</kbd> move</span>
+      <span><kbd>Enter</kbd> open</span>
+      <span><kbd>F</kbd> pin tool</span>
+      <span><kbd>V</kbd> grid or list</span>
+      <span><kbd>Esc</kbd> clear</span>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      const root = document.getElementById('grids'), status = document.getElementById('status'), bar = document.getElementById('bar'),
+            filter = document.getElementById('filter'), summary = document.getElementById('summary'), rail = document.getElementById('rail'),
+            hub = document.getElementById('hub'), tele = document.getElementById('telemetry'), pulse = document.getElementById('pulse');
+      const $ = id => document.getElementById(id);
+      const RECENT_MAX = 6;
+
+      // Per-browser conveniences (favourites, recently used, collapsed groups, layout). Storage may be blocked: every access is guarded.
+      const store = {
+        get(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d; } catch { return d; } },
+        set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+      };
+      let favs = new Set(store.get('osnt.favs', []).filter(x => typeof x === 'string'));
+      let recent = store.get('osnt.recent', []).filter(x => typeof x === 'string').slice(0, RECENT_MAX);
+      let collapsed = new Set(store.get('osnt.collapsed', []).filter(x => typeof x === 'string'));
+      let view = store.get('osnt.view', 'grid') === 'list' ? 'list' : 'grid';
+
+      let cfg = null, loadedOnce = false, lastSig = '';
+      const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+      const idOf = t => t.href || ('planned:' + t.name);
+      const STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9 6.8 19.7l1-5.9-4.3-4.1 5.9-.8z"/></svg>';
+      const CHEV = '<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      const pad = n => String(n).padStart(2, '0');
+      const hms = (d, utc) => utc ? `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}` : `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+
+      function setView(v, save = true) {
+        view = v; hub.classList.toggle('view-list', v === 'list');
+        $('vgrid').setAttribute('aria-pressed', String(v === 'grid')); $('vlist').setAttribute('aria-pressed', String(v === 'list'));
+        if (save) store.set('osnt.view', v);
+      }
+      $('vgrid').onclick = () => setView('grid'); $('vlist').onclick = () => setView('list'); setView(view, false);
+
+      // UTC clock: an OSINT hub is read across time zones.
+      const tick = () => { $('t-clock').textContent = hms(new Date(), true); };
+      tick(); setInterval(tick, 1000);
+
+      function fail(msg) {
+        status.textContent = 'Offline'; pulse.className = 'dot err'; root.setAttribute('aria-busy', 'false'); root.innerHTML = ''; bar.hidden = true; tele.hidden = true; rail.hidden = true;
+        const s = el('div', 'state error'); s.setAttribute('role', 'alert');
+        s.append(el('div', 'h3', 'Could not load the tool list'), el('p', '', msg));
+        const b = el('button', 'btn', 'Try again'); b.onclick = () => load(); s.append(b);
+        root.append(s);
+      }
+
+      function card(t, extra) {
+        const live = t.status === 'live' && t.href, off = t.status === 'offline';
+        const wrap = el('div', 'cardwrap'); wrap.dataset.id = idOf(t);
+        const c = el(live ? 'a' : 'div', 'card tool ' + (live ? 'tile live' : off ? 'offline' : 'planned'));
+        if (live) { c.href = t.href; c.addEventListener('click', () => noteRecent(idOf(t))); }
+        const h = el('h3'); h.append(el('span', 't', t.name));
+        if (live) { const d = el('span', 'dot ok'); d.title = 'Running'; d.setAttribute('role', 'img'); d.setAttribute('aria-label', 'Running'); h.prepend(d); }
+        else { const d = el('span', 'dot ' + (off ? 'warn' : 'off')); d.setAttribute('role', 'img'); d.setAttribute('aria-label', off ? 'Not running' : 'Planned'); h.prepend(d); }
+        c.append(h, el('p', '', t.description || ''));
+        c.append(el('span', 'meta', off ? 'NOT RESPONDING' : live ? t.href.replace(/\/$/, '') : 'PLANNED'));
+        c.dataset.q = (t.name + ' ' + (t.description || '')).toLowerCase();
+        c.title = off ? 'This plugin is installed but not answering. Check its service on the hub.' : (t.description || '');
+        wrap.append(c);
+        if (t.href) {
+          const id = idOf(t), on = favs.has(id);
+          const s = el('button', 'star'); s.type = 'button'; s.innerHTML = STAR;
+          s.setAttribute('aria-pressed', String(on)); s.setAttribute('aria-label', (on ? 'Remove from favourites: ' : 'Add to favourites: ') + t.name); s.title = on ? 'Unpin from favourites' : 'Pin to favourites';
+          s.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); toggleFav(id); });
+          wrap.append(s);
+        }
+        return wrap;
+      }
+
+      function noteRecent(id) { recent = [id, ...recent.filter(x => x !== id)].slice(0, RECENT_MAX); store.set('osnt.recent', recent); }
+      function toggleFav(id) {
+        const had = document.activeElement?.closest?.('.cardwrap') ? id : null;
+        favs.has(id) ? favs.delete(id) : favs.add(id); store.set('osnt.favs', [...favs]); render();
+        if (had) { const b = [...document.querySelectorAll('.star')].find(s => s.closest('.cardwrap').dataset.id === id); b?.focus(); }
+      }
+
+      function section(key, title, tools, opts = {}) {
+        const sec = el('section', 'grp'); sec.dataset.key = key; sec.id = 'g-' + key.replace(/\W+/g, '_');
+        const open = !collapsed.has(key);
+        const hb = el('button', 'grp-head'); hb.type = 'button'; hb.setAttribute('aria-expanded', String(open)); hb.id = 'gh-' + key.replace(/\W+/g, '_');
+        const live = tools.filter(t => t.status === 'live').length;
+        hb.innerHTML = CHEV; hb.append(el('span', '', title));
+        const cnt = el('span', 'count'); cnt.innerHTML = opts.noCount ? '' : `${tools.length}${live < tools.length ? ` · <b>${live}</b> up` : ''}`; hb.append(cnt);
+        if (!opts.noCount) {
+          const p = el('span', 'pips'); p.setAttribute('aria-hidden', 'true');
+          for (const t of tools) p.append(el('i', t.status === 'live' ? '' : t.status === 'offline' ? 'off' : 'plan'));
+          hb.append(p);
+        }
+        const body = el('div', 'grp-body tools'); body.setAttribute('role', 'group'); body.setAttribute('aria-labelledby', hb.id); body.hidden = !open;
+        const cards = tools.map(t => card(t)); body.append(...cards);
+        hb.onclick = () => { if (filter.value.trim()) return; const now = hb.getAttribute('aria-expanded') !== 'true'; hb.setAttribute('aria-expanded', String(now)); body.hidden = !now; now ? collapsed.delete(key) : collapsed.add(key); store.set('osnt.collapsed', [...collapsed]); };
+        sec.append(hb, body);
+        return { sec, cards, hb, body, title, tools, live, noCount: !!opts.noCount };
+      }
+
+      let sections = [], spy = null;
+      function buildRail() {
+        rail.replaceChildren(el('div', 'cap', 'Groups'));
+        spy?.disconnect();
+        for (const s of sections) {
+          const b = el('button'); b.type = 'button'; b.dataset.for = s.sec.id;
+          b.append(el('span', '', s.title));
+          if (!s.noCount) { const down = s.tools.length - s.live; const n = el('span', 'n' + (down ? ' warn' : ''), String(s.tools.length)); b.append(n); }
+          b.onclick = () => {
+            if (!filter.value.trim() && s.hb.getAttribute('aria-expanded') !== 'true') s.hb.click();
+            s.sec.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+            s.hb.focus({ preventScroll: true });
+          };
+          rail.append(b);
+        }
+        rail.hidden = !sections.length;
+        if ('IntersectionObserver' in window) {
+          spy = new IntersectionObserver(es => {
+            for (const e of es) if (e.isIntersecting) rail.querySelectorAll('button').forEach(b => b.setAttribute('aria-current', String(b.dataset.for === e.target.id)));
+          }, { rootMargin: '-15% 0px -70% 0px' });
+          sections.forEach(s => spy.observe(s.sec));
+        }
+      }
+
+      function render() {
+        root.innerHTML = ''; sections = [];
+        const all = (cfg.grid || []).flatMap(g => (g.tool || []).map(t => ({ ...t, group: g.name })));
+        const byId = new Map(all.filter(t => t.href).map(t => [idOf(t), t]));
+        // Stale ids (a plugin was removed) simply drop out.
+        const favTools = [...favs].map(i => byId.get(i)).filter(Boolean);
+        const recTools = recent.map(i => byId.get(i)).filter(t => t && !favs.has(idOf(t)));
+        if (favTools.length) sections.push(section('~fav', 'Favourites', favTools, { noCount: true }));
+        if (recTools.length) sections.push(section('~recent', 'Recently used', recTools, { noCount: true }));
+        for (const g of cfg.grid || []) {
+          if (!(g.tool || []).length) continue; // a grid with nothing in it yet is not worth a heading
+          sections.push(section(g.name, g.name, g.tool));
+        }
+        if (!sections.length) {
+          root.innerHTML = '<div class="state"><div class="h3">No tools configured</div><p>Install plugins from Settings, Packages, or add tool grids to tools.toml on the hub.</p></div>';
+          bar.hidden = true; tele.hidden = true;
+        } else { bar.hidden = false; tele.hidden = false; root.append(...sections.map(s => s.sec)); }
+        const none = el('div', 'state'); none.id = 'none'; none.hidden = true; none.append(el('div', 'h3', 'No tools match'), el('p')); root.append(none);
+        root.setAttribute('aria-busy', 'false');
+        const total = all.length, live = all.filter(t => t.status === 'live' && t.href).length, off = all.filter(t => t.status === 'offline').length, planned = total - live - off;
+        status.textContent = off ? `${live} running · ${off} down` : `${live} running`;
+        pulse.className = 'dot ' + (off ? 'warn' : 'ok');
+        summary.textContent = `${live} tool${live === 1 ? ' is' : 's are'} running on this hub` + (off ? `, ${off} installed but not responding` : '') + (planned ? `, ${planned} planned` : '') + '.';
+        $('t-run').innerHTML = `${live}<small> / ${total}</small>`; $('t-run-sub').textContent = `${(cfg.grid || []).filter(g => (g.tool || []).length).length} groups`;
+        const to = $('t-off'); to.textContent = off; to.className = 'v ' + (off ? 'warn' : 'dim');
+        $('t-plan').textContent = planned; $('t-fav').textContent = favTools.length;
+        $('t-rec').textContent = recTools.length ? `${recTools.length} recent` : 'on this browser';
+        buildRail(); applyFilter();
+      }
+
+      function applyFilter() {
+        const q = filter.value.trim().toLowerCase(); let shown = 0;
+        for (const s of sections) {
+          let any = 0;
+          for (const c of s.cards) { const m = !q || c.firstChild.dataset.q.includes(q); c.hidden = !m; if (m) any++; }
+          s.sec.hidden = !!q && !any; shown += any;
+          // While searching, every group with a hit is shown open, without touching the saved collapse state.
+          if (q) { s.body.hidden = !any; } else { s.body.hidden = s.hb.getAttribute('aria-expanded') !== 'true'; }
+        }
+        rail.querySelectorAll('button').forEach((b, i) => { b.hidden = !!q && sections[i]?.sec.hidden; });
+        const none = document.getElementById('none');
+        if (none) { none.hidden = !q || shown > 0; none.querySelector('p').textContent = `Nothing matches “${filter.value.trim()}”. Try a shorter word, such as a place, a data source or a kind of record.`; }
+      }
+
+      async function load() {
+        root.setAttribute('aria-busy', 'true');
+        try {
+          const r = await fetch('/api/tools');
+          if (r.status === 401) { location.href = '/login'; return; }
+          if (!r.ok) throw new Error('The hub answered ' + r.status + '.');
+          const next = await r.json(), sig = JSON.stringify(next);
+          $('t-poll').textContent = 'polled ' + hms(new Date(), true);
+          if (loadedOnce && sig === lastSig) { root.setAttribute('aria-busy', 'false'); return; }
+          cfg = next; lastSig = sig;
+        } catch (e) { if (loadedOnce) return; /* keep the last good list on screen during a background refresh */ fail(e && e.message && !/fetch|JSON|Load failed/i.test(e.message) ? e.message : 'The hub did not respond. Check that it is running and reachable.'); return; }
+        loadedOnce = true; render(); filter.disabled = false;
+      }
+
+      filter.addEventListener('input', applyFilter);
+      filter.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { const a = visibleCards().find(c => c.firstChild.tagName === 'A'); if (a) { noteRecent(idOf({ href: a.firstChild.getAttribute('href') })); location.href = a.firstChild.href; } }
+        if (e.key === 'ArrowDown') { e.preventDefault(); visibleCards()[0]?.firstChild.focus(); }
+      });
+      $('expand').onclick = () => { collapsed.clear(); store.set('osnt.collapsed', []); render(); };
+      $('collapse').onclick = () => { collapsed = new Set(sections.map(s => s.sec.dataset.key)); store.set('osnt.collapsed', [...collapsed]); render(); };
+
+      const visibleCards = () => sections.flatMap(s => s.sec.hidden || s.body.hidden ? [] : s.cards.filter(c => !c.hidden));
+      document.addEventListener('keydown', e => {
+        const tag = document.activeElement?.tagName;
+        const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(tag);
+        if ((e.key === '/' && !typing && !e.metaKey && !e.ctrlKey && !e.altKey) || ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k')) { e.preventDefault(); filter.focus(); filter.select(); return; }
+        if (e.key === 'Escape' && document.activeElement === filter) { filter.value = ''; applyFilter(); filter.blur(); return; }
+        if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
+        if (e.key.toLowerCase() === 'v') { setView(view === 'grid' ? 'list' : 'grid'); return; }
+        // Arrow keys move between cards by position on screen; F pins the focused tool.
+        const cur = document.activeElement?.closest?.('.cardwrap');
+        if (cur && e.key.toLowerCase() === 'f' && cur.querySelector('.star')) { e.preventDefault(); toggleFav(cur.dataset.id); return; }
+        if (!cur || !['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+        const cards = visibleCards(); const i = cards.indexOf(cur); if (i < 0) return;
+        const r = cur.getBoundingClientRect(); let next = null;
+        if (e.key === 'ArrowRight') next = cards[i + 1]; else if (e.key === 'ArrowLeft') next = cards[i - 1];
+        else {
+          const dir = e.key === 'ArrowDown' ? 1 : -1; let best = Infinity;
+          for (const c of cards) { const b = c.getBoundingClientRect(); const dy = (b.top - r.top) * dir; if (dy < 8) continue; const score = dy * 4 + Math.abs(b.left - r.left); if (score < best) { best = score; next = c; } }
+          if (!next && dir < 0) { filter.focus(); e.preventDefault(); return; }
+        }
+        if (next) { e.preventDefault(); next.firstChild.focus(); next.scrollIntoView({ block: 'nearest' }); }
+      });
+
+      load();
+      // Keep running/not-running current without a reload (the hub is cheap to ask).
+      setInterval(() => { if (!document.hidden && loadedOnce) load(); }, 30000);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden && loadedOnce) load(); });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Sign in · OSNT</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%230c7a62%27 stroke-width=%272.2%27%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%279%27/%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%273.2%27 fill=%27%230c7a62%27 stroke=%27none%27/%3E%3C/svg%3E">
+  <script>try { const t = JSON.parse(localStorage.getItem('osnt.theme')); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}</script>
+  <link rel="stylesheet" href="/static/osnt-ui.css">
+  <style>
+    .auth { width: min(420px, 100%); }
+    .auth .mark { width: 44px; height: 44px; color: var(--accent); margin-bottom: 22px; }
+    .auth h1 { margin: 0 0 6px; font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; }
+    .auth .lede { margin: 0 0 24px; color: var(--ink-2); }
+    .auth .panel { padding: 28px; background: var(--glass); border: 1px solid var(--edge-strong); border-radius: 16px; box-shadow: var(--shadow-float); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); }
+    #msg { margin-top: 16px; font-size: 13px; line-height: 1.5; color: var(--ink); background: var(--err-soft); border-left: 3px solid var(--err); border-radius: var(--radius-sm); padding: 10px 12px; overflow-wrap: anywhere; }
+    #msg:empty { display: none; }
+    #msg small { display: block; color: var(--ink-2); font-size: 12px; margin-top: 4px; }
+    #msg br { display: none; }
+    .foot { margin: 16px 0 0; text-align: center; font-size: 12px; color: var(--ink-3); }
+  </style>
+</head>
+<body class="wb-plain">
+  <main class="wb-auth">
+    <div class="auth">
+      <div class="panel">
+        <svg class="mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/><path d="M12 3v4" stroke-linecap="round"/></svg>
+        <h1>Sign in to OSNT</h1>
+        <p class="lede">Use the passkey on this device or your security key. There is no password.</p>
+        <button id="go" class="btn primary lg block" autofocus>Sign in with passkey</button>
+        <div id="msg" role="alert" aria-live="assertive"></div>
+      </div>
+      <p class="foot">First time on this hub? Setup opens automatically.</p>
+    </div>
+  </main>
+  <script>
+    const $ = id => document.getElementById(id);
+    const b64u = { dec: s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)),
+                   enc: b => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') };
+    const post = (p, body) => fetch(p, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+    const next = () => { const n = new URLSearchParams(location.search).get('next'); return n && n.startsWith('/') && !n.startsWith('//') ? n : '/'; };
+
+    async function signIn() {
+      $('msg').textContent = ''; $('go').disabled = true;
+      try {
+        if (!window.PublicKeyCredential) throw new Error('This browser does not support passkeys (it needs HTTPS and a trusted certificate).');
+        const begin = await post('/auth/login/begin');
+        const opts = await begin.json();
+        if (!begin.ok) { if (begin.status === 409) { location.href = '/setup'; return; } throw new Error(opts.error); }
+        const pk = opts.publicKey;
+        pk.challenge = b64u.dec(pk.challenge);
+        pk.allowCredentials = pk.allowCredentials.map(c => ({ ...c, id: b64u.dec(c.id) }));
+        const cred = await navigator.credentials.get({ publicKey: pk });
+        const r = cred.response;
+        const fin = await post('/auth/login/finish', { ceremony: opts.ceremony, id: cred.id, response: {
+          authenticatorData: b64u.enc(r.authenticatorData), clientDataJSON: b64u.enc(r.clientDataJSON), signature: b64u.enc(r.signature) } });
+        if (!fin.ok) throw new Error((await fin.json()).error);
+        location.href = next();
+      } catch (e) { $('msg').innerHTML = (e.name === 'NotAllowedError' ? 'The browser did not complete the passkey step (you cancelled, it timed out, or this device cannot do it). ' : '') + '<br><small>Details: ' + (e.name || 'Error') + ': ' + (e.message || '').replace(/[<>&]/g, '') + '</small>'; }
+      $('go').disabled = false;
+    }
+    $('go').onclick = signIn;
+    fetch('/auth/status').then(r => r.json()).then(s => { if (s.logged_in) location.href = next(); else if (!s.configured) location.href = '/setup'; });
+  </script>
+</body>
+</html>
